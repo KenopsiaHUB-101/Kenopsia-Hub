@@ -1,0 +1,211 @@
+-- ════════════════════════════════════════════════════════════════════
+-- KENOPSIA HUB - PANDA AUTH & GITHUB LOADER
+-- ════════════════════════════════════════════════════════════════════
+
+-- Ganti link di bawah ini dengan link GitHub Raw dari script obfuscated Anda
+local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/UsernameAnda/RepoAnda/main/main_obfuscated.lua"
+
+local PANDA_CONFIG = {
+    Service     = "kenopsiahub",
+    SilentMode  = false,
+    SaveKey     = true,
+    SaveKeyPath = "KenopsiaHUB.txt",
+    AutoKick    = false,
+    KickMessage = "Invalid Key.",
+    HubName     = "KenopsiaHUB",
+    MaxRetries  = 3,
+}
+
+-- Modern Cyber Dark Palette
+local C = {
+    card     = Color3.fromRGB(18, 18, 22),
+    topbar   = Color3.fromRGB(24, 24, 30),
+    border   = Color3.fromRGB(45, 45, 58),
+    borderH  = Color3.fromRGB(124, 58, 237),
+    text     = Color3.fromRGB(244, 244, 245),
+    muted    = Color3.fromRGB(161, 161, 170),
+    inputBg  = Color3.fromRGB(28, 28, 36),
+    primary  = Color3.fromRGB(124, 58, 237),
+    primaryH = Color3.fromRGB(139, 92, 246),
+    success  = Color3.fromRGB(34, 197, 94),
+    error_   = Color3.fromRGB(239, 68, 68),
+    selected = Color3.fromRGB(39, 31, 62),
+}
+
+local _wait      = task and task.wait or wait
+local safeCopy   = (typeof(setclipboard) == "function") and setclipboard or function() end
+local safeWrite  = (typeof(writefile)    == "function") and writefile    or function() end
+local safeRead   = (typeof(readfile)     == "function") and readfile     or function() return nil end
+local safeExists = (typeof(isfile)       == "function") and isfile       or function() return false end
+
+local function loadLib()
+    local ok, src = pcall(function() return game:HttpGet("https://api.pandauth.com/lib/external/panda-v3-external.lua") end)
+    if not ok or not src then return nil end
+    local fn = loadstring(src); if not fn then return nil end
+    local ok2, lib = pcall(fn); return ok2 and lib or nil
+end
+
+local Pelinda = loadLib(); if not Pelinda then return end
+
+local function validate(key)
+    for i = 1, PANDA_CONFIG.MaxRetries do
+        local ok, r = pcall(Pelinda.Init, { Service = PANDA_CONFIG.Service, Key = key, SilentMode = PANDA_CONFIG.SilentMode })
+        if ok and r == "validated!!" then return true end
+        _wait(0.4)
+    end
+    return false
+end
+
+local function getParent()
+    local ok, cg = pcall(function() return game:GetService("CoreGui") end)
+    if ok and cg then return cg end
+    return game.Players.LocalPlayer:WaitForChild("PlayerGui")
+end
+
+-- Memanggil Script Utama dari GitHub via loadstring
+local function executeGitHubScript()
+    if GITHUB_SCRIPT_URL == "https://raw.githubusercontent.com/UsernameAnda/RepoAnda/main/main_obfuscated.lua" then
+        warn("[KenopsiaHUB] Harap ganti GITHUB_SCRIPT_URL dengan link GitHub Raw Anda!")
+        return
+    end
+
+    local success, content = pcall(function()
+        return game:HttpGet(GITHUB_SCRIPT_URL)
+    end)
+
+    if success and content then
+        local func, err = loadstring(content)
+        if func then
+            func()
+        else
+            warn("[KenopsiaHUB] Gagal memuat syntax script: " .. tostring(err))
+        end
+    else
+        warn("[KenopsiaHUB] Gagal mengambil script dari GitHub Raw.")
+    end
+end
+
+-- Check Key Tersimpan
+if PANDA_CONFIG.SaveKey and safeExists(PANDA_CONFIG.SaveKeyPath) then
+    local k = safeRead(PANDA_CONFIG.SaveKeyPath)
+    if k and k ~= "" and validate((k:gsub("%s+", ""))) then
+        executeGitHubScript()
+        return
+    end
+end
+
+-- ==========================================
+-- AUTHENTICATION UI
+-- ==========================================
+local gui = Instance.new("ScreenGui")
+gui.Name = "PandaAuthUI"; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true
+gui.Parent = getParent()
+
+local overlay = Instance.new("Frame", gui)
+overlay.Size = UDim2.new(1, 0, 1, 0); overlay.BorderSizePixel = 0
+overlay.BackgroundColor3 = Color3.fromRGB(9, 9, 11); overlay.BackgroundTransparency = 0.25
+
+local card = Instance.new("Frame", overlay)
+card.Size = UDim2.new(0, 400, 0, 360)
+card.Position = UDim2.new(0.5, -200, 0.5, -180)
+card.BackgroundColor3 = C.card; card.BorderSizePixel = 0
+Instance.new("UICorner", card).CornerRadius = UDim.new(0, 12)
+local cardStroke = Instance.new("UIStroke", card)
+cardStroke.Color = C.border; cardStroke.Thickness = 1
+
+local pad = Instance.new("UIPadding", card)
+pad.PaddingLeft = UDim.new(0, 28); pad.PaddingRight = UDim.new(0, 28)
+pad.PaddingTop = UDim.new(0, 24); pad.PaddingBottom = UDim.new(0, 24)
+
+local dot = Instance.new("Frame", card)
+dot.Size = UDim2.new(0, 8, 0, 8); dot.Position = UDim2.new(0, 0, 0, 6)
+dot.BackgroundColor3 = C.success; dot.BorderSizePixel = 0
+Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+
+local headerTag = Instance.new("TextLabel", card)
+headerTag.BackgroundTransparency = 1
+headerTag.Position = UDim2.new(0, 16, 0, 0); headerTag.Size = UDim2.new(1, -50, 0, 18)
+headerTag.Font = Enum.Font.GothamMedium; headerTag.Text = "Authentication required"
+headerTag.TextColor3 = C.muted; headerTag.TextSize = 11
+headerTag.TextXAlignment = Enum.TextXAlignment.Left
+
+local closeBtn = Instance.new("TextButton", card)
+closeBtn.Position = UDim2.new(1, -24, 0, -2); closeBtn.Size = UDim2.new(0, 24, 0, 24)
+closeBtn.BackgroundTransparency = 1; closeBtn.Font = Enum.Font.Gotham
+closeBtn.Text = "✕"; closeBtn.TextColor3 = C.muted; closeBtn.TextSize = 14; closeBtn.AutoButtonColor = false
+
+local title = Instance.new("TextLabel", card)
+title.BackgroundTransparency = 1
+title.Position = UDim2.new(0, 0, 0, 38); title.Size = UDim2.new(1, 0, 0, 28)
+title.Font = Enum.Font.GothamBold; title.Text = PANDA_CONFIG.HubName
+title.TextColor3 = C.text; title.TextSize = 22
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local sub = Instance.new("TextLabel", card)
+sub.BackgroundTransparency = 1
+sub.Position = UDim2.new(0, 0, 0, 68); sub.Size = UDim2.new(1, 0, 0, 20)
+sub.Font = Enum.Font.Gotham; sub.Text = "Paste your access key to continue."
+sub.TextColor3 = C.muted; sub.TextSize = 13
+sub.TextXAlignment = Enum.TextXAlignment.Left
+
+local lbl = Instance.new("TextLabel", card)
+lbl.BackgroundTransparency = 1
+lbl.Position = UDim2.new(0, 0, 0, 104); lbl.Size = UDim2.new(1, 0, 0, 14)
+lbl.Font = Enum.Font.GothamMedium; lbl.Text = "Access key"
+lbl.TextColor3 = C.text; lbl.TextSize = 11
+lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local inputBox = Instance.new("TextBox", card)
+inputBox.Position = UDim2.new(0, 0, 0, 124); inputBox.Size = UDim2.new(1, 0, 0, 44)
+inputBox.BackgroundColor3 = C.inputBg; inputBox.BorderSizePixel = 0
+inputBox.Font = Enum.Font.Gotham; inputBox.PlaceholderText = "PANDA-XXXX-XXXX-XXXX"
+inputBox.PlaceholderColor3 = C.muted; inputBox.Text = ""; inputBox.TextColor3 = C.text; inputBox.TextSize = 14
+inputBox.ClearTextOnFocus = false; inputBox.TextXAlignment = Enum.TextXAlignment.Left
+Instance.new("UICorner", inputBox).CornerRadius = UDim.new(0, 8)
+local iStroke = Instance.new("UIStroke", inputBox)
+iStroke.Color = C.border; iStroke.Thickness = 1
+local ipad = Instance.new("UIPadding", inputBox)
+ipad.PaddingLeft = UDim.new(0, 14); ipad.PaddingRight = UDim.new(0, 14)
+
+local getBtn = Instance.new("TextButton", card)
+getBtn.Position = UDim2.new(0, 0, 0, 184); getBtn.Size = UDim2.new(0.48, -6, 0, 44)
+getBtn.BackgroundColor3 = C.inputBg; getBtn.BorderSizePixel = 0
+getBtn.Font = Enum.Font.GothamMedium; getBtn.Text = "Get key"; getBtn.TextColor3 = C.text; getBtn.TextSize = 14; getBtn.AutoButtonColor = false
+Instance.new("UICorner", getBtn).CornerRadius = UDim.new(0, 8)
+
+local verifyBtn = Instance.new("TextButton", card)
+verifyBtn.Position = UDim2.new(0.52, 6, 0, 184); verifyBtn.Size = UDim2.new(0.48, -6, 0, 44)
+verifyBtn.BackgroundColor3 = C.primary; verifyBtn.BorderSizePixel = 0
+verifyBtn.Font = Enum.Font.GothamMedium; verifyBtn.Text = "Verify  →"; verifyBtn.TextColor3 = C.text; verifyBtn.TextSize = 14; verifyBtn.AutoButtonColor = false
+Instance.new("UICorner", verifyBtn).CornerRadius = UDim.new(0, 8)
+
+local status = Instance.new("TextLabel", card)
+status.BackgroundTransparency = 1
+status.Position = UDim2.new(0, 0, 0, 240); status.Size = UDim2.new(1, 0, 0, 16)
+status.Font = Enum.Font.Gotham; status.Text = ""; status.TextColor3 = C.muted; status.TextSize = 12
+status.TextXAlignment = Enum.TextXAlignment.Left
+
+closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+getBtn.MouseButton1Click:Connect(function()
+    local link = Pelinda.GetKeyLink({ Service = PANDA_CONFIG.Service })
+    if link then safeCopy(link); status.Text = "✓  Link copied to clipboard."; status.TextColor3 = C.success end
+end)
+
+verifyBtn.MouseButton1Click:Connect(function()
+    local key = inputBox.Text:gsub("%s+", "")
+    if key == "" then status.Text = "Please enter your key."; status.TextColor3 = C.error_; return end
+    verifyBtn.Text = "Verifying…"; status.Text = ""
+    if validate(key) then
+        if PANDA_CONFIG.SaveKey then safeWrite(PANDA_CONFIG.SaveKeyPath, key) end
+        status.Text = "✓  Verified. Loading script…"; status.TextColor3 = C.success
+        _wait(0.5)
+        gui:Destroy()
+        executeGitHubScript()
+    else
+        verifyBtn.Text = "Verify  →"
+        status.Text = "✕  Invalid key. Please try again."; status.TextColor3 = C.error_
+    end
+end)
+
+
