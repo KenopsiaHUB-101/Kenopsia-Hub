@@ -11,48 +11,6 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 
--- 📱 FITUR OTOMATIS: Tombol CTRL Melayang Khusus Mobile (Bisa Digeser)
-task.spawn(function()
-    pcall(function()
-        if CoreGui:FindFirstChild("KenopsiaCtrlButton") then
-            CoreGui.KenopsiaCtrlButton:Destroy()
-        end
-
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "KenopsiaCtrlButton"
-        screenGui.Parent = CoreGui
-
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 50, 0, 50)
-        btn.Position = UDim2.new(0, 15, 0.5, -25) -- Posisi awal di pinggir kiri tengah layar
-        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        btn.TextColor3 = Color3.fromRGB(0, 255, 200)
-        btn.Text = "CTRL"
-        btn.TextSize = 13
-        btn.Font = Enum.Font.Code
-        btn.Active = true
-        btn.Draggable = true -- Bisa digeser-geser di layar HP!
-        btn.Parent = screenGui
-
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 8)
-        corner.Parent = btn
-
-        local stroke = Instance.new("UIStroke")
-        stroke.Thickness = 2
-        stroke.Color = Color3.fromRGB(0, 255, 200)
-        stroke.Parent = btn
-
-        btn.MouseButton1Click:Connect(function()
-            pcall(function()
-                game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-                task.wait(0.05)
-                game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
-            end)
-        end)
-    end)
-end)
-
 local zapFolder = ReplicatedStorage:WaitForChild("ZAP", 5)
 if not zapFolder then
     Fluent:Notify({ Title = "Kenopsia HUB", Content = "ZAP folder not found!", Duration = 6 })
@@ -145,7 +103,7 @@ local Translations = {
         ResetPreset = "Redefinir / Limpar Seleção", PresetResetDesc = "Desmarcar todos os itens.",
         BlacklistTitle = "Lista Negra de Itens", BlacklistDesc = "Itens na lista negra nunca serão comprados.",
         SettingsTitle = "Configurações Avançadas", SettingsDesc = "Opções de configuração.",
-        SmartStock = "Verificação de Estoque", AntiAfk = "Proteção Anti-AFK", AutoReconnect = "Reconexão Automática",
+        SmartStock = "Verificación de Stock", AntiAfk = "Proteção Anti-AFK", AutoReconnect = "Reconexión Automática",
         LowFps = "FPS Baixo / Modo Fundo", MinCoin = "Moedas Mínimas Seguras", Webhook = "URL do Webhook do Discord", Delay = "Atraso de Compra (Seg)",
         StatsTitle = "📊 Estatísticas da Sessão", LogsTitle = "Histórico de Compras", NoItem = "Nenhum item comprado ainda.",
         Loaded = "Carregado com sucesso!", LockedSub = "A aba DevTools está bloqueada."
@@ -237,14 +195,56 @@ for _, itemName in ipairs(gardenItemList) do
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Kenopsia HUB | Build And Crush",
-    SubTitle = " • Have a nice day!!!",
+    Title = "Kenopsia HUB |",
+    SubTitle = "Have a nice day!!!",
     TabWidth = 120,
     Size = UDim2.fromOffset(500, 420),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightControl
 })
+
+-- 📱 FITUR TOMBOL MELAYANG AMAN KHUSUS HP (Langsung Mengontrol Jendela Tanpa VirtualKey)
+task.spawn(function()
+    pcall(function()
+        if CoreGui:FindFirstChild("KenopsiaCtrlButton") then
+            CoreGui.KenopsiaCtrlButton:Destroy()
+        end
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "KenopsiaCtrlButton"
+        screenGui.ResetOnSpawn = false
+        screenGui.Parent = CoreGui
+
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 50, 0, 50)
+        btn.Position = UDim2.new(0, 15, 0.5, -25)
+        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        btn.TextColor3 = Color3.fromRGB(0, 255, 200)
+        btn.Text = "CTRL"
+        btn.TextSize = 13
+        btn.Font = Enum.Font.Code
+        btn.Active = true
+        btn.Draggable = true
+        btn.Parent = screenGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = btn
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 2
+        stroke.Color = Color3.fromRGB(0, 255, 200)
+        stroke.Parent = btn
+
+        -- Menggunakan fungsi toggle window bawaan Fluent secara langsung (Anti-Stuck & Anti-Error)
+        btn.MouseButton1Click:Connect(function()
+            pcall(function()
+                Window:Minimize()
+            end)
+        end)
+    end)
+end)
 
 local Tabs = {
     Store = Window:AddTab({ Title = L("Store"), Icon = "shopping-cart" }),
