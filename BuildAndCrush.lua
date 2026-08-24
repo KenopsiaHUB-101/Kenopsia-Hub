@@ -33,7 +33,6 @@ local gardenItemList = {
     "structural-oil", "mechanical-oil", "combat-oil", "crateDrone"
 }
 
--- Kamus Multi-Bahasa
 local currentLang = "English"
 local Translations = {
     English = {
@@ -136,7 +135,7 @@ local Translations = {
         PresetsTitle = "快速预设管理器", PresetsDesc = "选择快捷组合。",
         PresetVehicle = "预设：载具零件", PresetVehicleDesc = "勾选所有基础载具组件。",
         PresetFarm = "预设：农业设置", PresetFarmDesc = "勾选所有喷水器和油料。",
-        PresetReset = "重置 / 清除选择", ResetPresetDesc = "取消勾选所有物品。",
+        PresetReset = "重置 / 清除选择", PresetResetDesc = "取消勾选所有物品。",
         BlacklistTitle = "物品黑名单", BlacklistDesc = "黑名单中的物品将永远不会被购买。",
         SettingsTitle = "高级设置与安全", SettingsDesc = "配置选项。",
         SmartStock = "智能库存检查", AntiAfk = "防挂机保护", AutoReconnect = "自动重连",
@@ -210,7 +209,7 @@ local Tabs = {
     Blacklist = Window:AddTab({ Title = L("Blacklist"), Icon = "shield-alert" }),
     DevTools = Window:AddTab({ Title = L("DevTools"), Icon = "lock" }),
     Settings = Window:AddTab({ Title = L("Settings"), Icon = "settings" }),
-    Logs = Window:AddTab({ Title = L("Logs"), Icon = "list" })
+    Logs = Window:AddTab({ Title = "Logs", Icon = "list" })
 }
 
 Fluent:Notify({ Title = "Kenopsia HUB", Content = L("Loaded"), SubTitle = L("LockedSub"), Duration = 5 })
@@ -343,15 +342,19 @@ Tabs.DevTools:AddInput("DevPasswordInput", {
 
 Tabs.Settings:AddParagraph({ Title = L("SettingsTitle"), Content = L("SettingsDesc") })
 
--- Pilihan Bahasa (Default: English, Bahasa Kedua: Indonesian, Serta Bahasa Lainnya)
+-- Dropdown Bahasa yang sekarang langsung me-reload script agar bahasa langsung berubah total
 Tabs.Settings:AddDropdown("LanguageDropdown", {
     Title = "Language / Bahasa / Idioma / Язык / 语言",
-    Description = "Select UI Language (Default: English)",
+    Description = "Select UI Language (Changes take effect on re-execute)",
     Values = {"English", "Indonesian", "Spanish", "Portuguese", "Russian", "Chinese"},
     Default = 1,
     Callback = function(Value)
         currentLang = Value
-        Fluent:Notify({ Title = "Language Updated", Content = "Language changed to: " .. Value, Duration = 3 })
+        Fluent:Notify({ 
+            Title = "Language Changed", 
+            Content = "Bahasa diubah ke " .. Value .. ". Silakan Re-execute script untuk menerapkan perubahan teks secara total.", 
+            Duration = 6 
+        })
     end
 })
 
@@ -361,7 +364,7 @@ Tabs.Settings:AddToggle("AutoReconnectToggle", { Title = L("AutoReconnect"), Def
 Tabs.Settings:AddToggle("OptimizeFpsToggle", { Title = L("LowFps"), Default = false, Callback = function(Value) optimizeFpsActive = Value if not Value then setfpscap(999) end end })
 Tabs.Settings:AddInput("MinCoinInput", { Title = L("MinCoin"), Default = "0", Numeric = true, Finished = true, Callback = function(Value) minCoinThreshold = tonumber(Value) or 0 end })
 Tabs.Settings:AddInput("WebhookInput", { Title = L("Webhook"), Default = "", Finished = true, Callback = function(Value) webhookUrl = Value end })
-Tabs.Settings:AddInput("DelayInput", { Title = L("Delay"), Default = tostring(buyDelay), Numeric = true, Finished = false, Callback = function(Value) local num = tonumber(Value) if num and num >= 0.01 then buyDelay = num end end })
+Tabs.Settings:AddInput("DelayInput", { Title = "Delay (Seconds)", Default = tostring(buyDelay), Numeric = true, Finished = false, Callback = function(Value) local num = tonumber(Value) if num and num >= 0.01 then buyDelay = num end end })
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
@@ -419,7 +422,7 @@ local function beliItem(itemName)
     if bufferCache[itemName] then
         pcall(function() merchantRemote:FireServer(bufferCache[itemName], {}) end)
         sessionStats.itemsBought = sessionStats.itemsBought + 1
-        addLog("Buy: " .. getCleanDisplayName(itemName))
+        addLog("Buy: " + getCleanDisplayName(itemName))
         task.spawn(function() sendDiscordWebhook(itemName) end)
     end
 end
@@ -434,7 +437,7 @@ end)
 
 if autoReconnectActive then
     local CoreGui = game:GetService("CoreGui")
-    local promptGui = CoreGui:FindFirstChild("RobrokPromptGui") or CoreGui:FindFirstChild("RobloxPromptGui")
+    local promptGui = CoreGui:FindFirstChild("RobloxPromptGui")
     if promptGui then
         local promptOverlay = promptGui:FindFirstChild("promptOverlay")
         if promptOverlay then
@@ -458,6 +461,36 @@ task.spawn(function()
             end
         end
     end
+end)
+
+-- Tombol Minimize Khusus HP (Floating Button)
+local CoreGui = game:GetService("CoreGui")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KenopsiaMobileToggle"
+screenGui.Parent = CoreGui
+
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0, 45, 0, 45)
+btn.Position = UDim2.new(0, 20, 0.5, -22) -- Posisi di pinggir tengah layar (bisa digeser)
+btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+btn.Text = "UI"
+btn.TextSize = 16
+btn.Font = Enum.Font.SourceSansBold
+btn.Parent = screenGui
+
+-- Membuat sudut tombol melingkar
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = btn
+
+-- Fungsi saat tombol disentuh di HP
+local vim = game:GetService("VirtualInputManager")
+btn.MouseButton1Click:Connect(function()
+    -- Mensimulasikan seolah-olah tombol RightControl di-klik di keyboard virtual
+    vim:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+    task.wait(0.05)
+    vim:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
 end)
 
 Window:SelectTab(1)
