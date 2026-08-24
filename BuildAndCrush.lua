@@ -9,6 +9,49 @@ local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+
+-- 📱 FITUR OTOMATIS: Tombol CTRL Melayang Khusus Mobile (Bisa Digeser)
+task.spawn(function()
+    pcall(function()
+        if CoreGui:FindFirstChild("KenopsiaCtrlButton") then
+            CoreGui.KenopsiaCtrlButton:Destroy()
+        end
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "KenopsiaCtrlButton"
+        screenGui.Parent = CoreGui
+
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 50, 0, 50)
+        btn.Position = UDim2.new(0, 15, 0.5, -25) -- Posisi awal di pinggir kiri tengah layar
+        btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        btn.TextColor3 = Color3.fromRGB(0, 255, 200)
+        btn.Text = "CTRL"
+        btn.TextSize = 13
+        btn.Font = Enum.Font.Code
+        btn.Active = true
+        btn.Draggable = true -- Bisa digeser-geser di layar HP!
+        btn.Parent = screenGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = btn
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 2
+        stroke.Color = Color3.fromRGB(0, 255, 200)
+        stroke.Parent = btn
+
+        btn.MouseButton1Click:Connect(function()
+            pcall(function()
+                game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+                task.wait(0.05)
+                game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+            end)
+        end)
+    end)
+end)
 
 local zapFolder = ReplicatedStorage:WaitForChild("ZAP", 5)
 if not zapFolder then
@@ -135,7 +178,7 @@ local Translations = {
         PresetsTitle = "快速预设管理器", PresetsDesc = "选择快捷组合。",
         PresetVehicle = "预设：载具零件", PresetVehicleDesc = "勾选所有基础载具组件。",
         PresetFarm = "预设：农业设置", PresetFarmDesc = "勾选所有喷水器和油料。",
-        PresetReset = "重置 / 清除选择", PresetResetDesc = "取消勾选所有物品。",
+        PresetReset = "重置 / 清除选择", ResetPresetDesc = "取消勾选所有物品。",
         BlacklistTitle = "物品黑名单", BlacklistDesc = "黑名单中的物品将永远不会被购买。",
         SettingsTitle = "高级设置与安全", SettingsDesc = "配置选项。",
         SmartStock = "智能库存检查", AntiAfk = "防挂机保护", AutoReconnect = "自动重连",
@@ -194,8 +237,8 @@ for _, itemName in ipairs(gardenItemList) do
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Kenopsia HUB | v3.1 Secured DevTools",
-    SubTitle = "Ultimate AFK & Multi-Language DevSuite",
+    Title = "Kenopsia HUB | Build And Crush",
+    SubTitle = " • Have a nice day!!!",
     TabWidth = 120,
     Size = UDim2.fromOffset(500, 420),
     Acrylic = true,
@@ -342,7 +385,6 @@ Tabs.DevTools:AddInput("DevPasswordInput", {
 
 Tabs.Settings:AddParagraph({ Title = L("SettingsTitle"), Content = L("SettingsDesc") })
 
--- Dropdown Bahasa yang sekarang langsung me-reload script agar bahasa langsung berubah total
 Tabs.Settings:AddDropdown("LanguageDropdown", {
     Title = "Language / Bahasa / Idioma / Язык / 语言",
     Description = "Select UI Language (Changes take effect on re-execute)",
@@ -422,7 +464,7 @@ local function beliItem(itemName)
     if bufferCache[itemName] then
         pcall(function() merchantRemote:FireServer(bufferCache[itemName], {}) end)
         sessionStats.itemsBought = sessionStats.itemsBought + 1
-        addLog("Buy: " + getCleanDisplayName(itemName))
+        addLog("Buy: " .. getCleanDisplayName(itemName))
         task.spawn(function() sendDiscordWebhook(itemName) end)
     end
 end
@@ -461,36 +503,6 @@ task.spawn(function()
             end
         end
     end
-end)
-
--- Tombol Minimize Khusus HP (Floating Button)
-local CoreGui = game:GetService("CoreGui")
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KenopsiaMobileToggle"
-screenGui.Parent = CoreGui
-
-local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(0, 45, 0, 45)
-btn.Position = UDim2.new(0, 20, 0.5, -22) -- Posisi di pinggir tengah layar (bisa digeser)
-btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-btn.Text = "UI"
-btn.TextSize = 16
-btn.Font = Enum.Font.SourceSansBold
-btn.Parent = screenGui
-
--- Membuat sudut tombol melingkar
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(1, 0)
-corner.Parent = btn
-
--- Fungsi saat tombol disentuh di HP
-local vim = game:GetService("VirtualInputManager")
-btn.MouseButton1Click:Connect(function()
-    -- Mensimulasikan seolah-olah tombol RightControl di-klik di keyboard virtual
-    vim:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-    task.wait(0.05)
-    vim:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
 end)
 
 Window:SelectTab(1)
