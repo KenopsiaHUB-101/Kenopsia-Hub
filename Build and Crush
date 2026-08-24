@@ -2,8 +2,7 @@
 -- KENOPSIA HUB - PANDA AUTH & GITHUB LOADER
 -- ════════════════════════════════════════════════════════════════════
 
--- Ganti link di bawah ini dengan link GitHub Raw dari script obfuscated Anda
-local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/UsernameAnda/RepoAnda/main/main_obfuscated.lua"
+local GITHUB_SCRIPT_URL = "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/refs/heads/main/Build and Crush"
 
 local PANDA_CONFIG = {
     Service     = "kenopsiahub",
