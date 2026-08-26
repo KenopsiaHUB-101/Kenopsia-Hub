@@ -51,7 +51,7 @@ HUB.getCleanDisplayName = function(rawName)
     return clean:gsub("(%a)([%w_']*)", function(first, rest) return first:upper() .. rest:lower() end)
 end
 
--- ==================== FLOATING BUTTON (MOBILE / LOGO GITHUB) ====================
+-- ==================== FLOATING BUTTON (MOBILE / LOGO GITHUB - FIX JOYSTICK) ====================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "KenopsiaFloatingGui"
 screenGui.Parent = game:GetService("CoreGui")
@@ -81,11 +81,25 @@ pcall(function()
     end
 end)
 
--- Simulated Key Press Toggle UI (RightControl)
-toggleBtn.MouseButton1Click:Connect(function()
-    local VirtualInputManager = game:GetService("VirtualInputManager")
+-- Sistem Toggle UI yang Stabil untuk Mobile (Mencegah Joystick Freeze)
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Fungsi simulasi penekanan tombol yang aman dengan delay
+local function safeToggleUI()
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+    -- Sedikit penundaan agar Roblox di mobile dapat memproses KeyDown dengan benar
+    task.wait(0.05) 
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+end
+
+-- Gunakan TouchEnded untuk input yang lebih stabil di perangkat Mobile
+toggleBtn.TouchEnded:Connect(function()
+    safeToggleUI()
+end)
+
+-- Kasus menempel di layar jika jari meleset (untuk keamanan KeyUp)
+toggleBtn.TouchCancelled:Connect(function()
+    -- VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
 end)
 
 HUB.FloatingButton = screenGui
