@@ -2,76 +2,64 @@ return function(HUB)
     local Tabs = HUB.Tabs
     local State = HUB.State
     local Fluent = HUB.Fluent
-    local VirtualUser = game:GetService("VirtualUser")
     local TeleportService = game:GetService("TeleportService")
+    local HttpService = game:GetService("HttpService")
     local LocalPlayer = game:GetService("Players").LocalPlayer
 
-    Tabs.Settings:AddParagraph({ Title = "Advanced Settings", Content = "Konfigurasi sistem & keamanan." })
+    Tabs.Settings:AddParagraph({ Title = "Advanced Settings", Content = "Konfigurasi sistem, jaringan & keamanan." })
 
-    -- 1. Pilihan Bahasa (Language Dropdown)
-    Tabs.Settings:AddDropdown("LanguageDropdown", {
-        Title = "Language / Bahasa",
-        Values = {"English", "Indonesia"},
-        Default = State.currentLang or "English",
-        Callback = function(Value)
-            State.currentLang = Value
-            Fluent:Notify({ 
-                Title = "Language Changed", 
-                Content = "Bahasa diubah ke: " .. Value, 
-                Duration = 3 
-            })
-            -- Catatan: Anda bisa menambahkan logika terjemahan teks di sini jika ingin script-nya bilingual penuh.
+    -- 1. Server Hop (Low Player Server & Rejoin)
+    Tabs.Settings:AddButton({
+        Title = "Server Hop (Pindah Server Sepi)",
+        Description = "Cari server baru yang lebih sedikit pemainnya.",
+        Callback = function()
+            Fluent:Notify({ Title = "Server Hop", Content = "Mencari server sepi...", Duration = 3 })
+            pcall(function()
+                local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/0?sortOrder=Asc&limit=100")).data
+                for _, s in pairs(servers) do
+                    if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, LocalPlayer)
+                        break
+                    end
+                end
+            end)
         end
     })
 
-    -- 2. Smart Stock Check
-    Tabs.Settings:AddToggle("SmartStockToggle", { 
-        Title = "Smart Stock Check", 
-        Default = true, 
-        Callback = function(V) 
-            State.smartStockActive = V 
-        end 
+    Tabs.Settings:AddButton({
+        Title = "Rejoin Server Current",
+        Callback = function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end
     })
-    
-    -- 3. Anti-AFK Protection
-    Tabs.Settings:AddToggle("AntiAfkToggle", { 
-        Title = "Anti-AFK Protection", 
-        Default = true, 
-        Callback = function(V) 
-            State.antiAfkActive = V 
-        end 
+
+    -- 2. Streamproof & Floating Button Toggle
+    Tabs.Settings:AddToggle("StreamproofToggle", {
+        Title = "Streamproof Mode (Sembunyikan Username)",
+        Default = false,
+        Callback = function(V) State.streamproofActive = V end
     })
-    
-    LocalPlayer.Idled:Connect(function()
-        if getgenv().KenopsiaRunning and State.antiAfkActive then
-            VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            task.wait(1)
-            VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+
+    Tabs.Settings:AddToggle("AudioAlertToggle", {
+        Title = "Audio Alert Saat Beli Item",
+        Default = true,
+        Callback = function(V) State.audioAlertActive = V end
+    })
+
+    Tabs.Settings:AddToggle("FloatingButtonToggle", {
+        Title = "Tampilkan Tombol Melayang (Mobile)",
+        Default = true,
+        Callback = function(V)
+            if HUB.FloatingButton then HUB.FloatingButton.Enabled = V end
         end
-    end)
-
-    -- 4. Auto-Reconnect
-    Tabs.Settings:AddToggle("AutoReconnectToggle", { 
-        Title = "Auto-Reconnect", 
-        Default = true, 
-        Callback = function(V) 
-            State.autoReconnectActive = V 
-        end 
     })
-    
-    local CoreGui = game:GetService("CoreGui")
-    if CoreGui:FindFirstChild("RobloxPromptGui") and CoreGui.RobloxPromptGui:FindFirstChild("promptOverlay") then
-        CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
-            if getgenv().KenopsiaRunning and State.autoReconnectActive and child.Name == "ErrorPrompt" then
-                task.wait(2)
-                TeleportService:Teleport(game.PlaceId, LocalPlayer)
-            end
-        end)
-    end
 
-    -- 5. Low FPS / Background Mode
+    -- 3. Auto AFK & Auto Reconnect
+    Tabs.Settings:AddToggle("SmartStockToggle", { Title = "Smart Stock Check", Default = true, Callback = function(V) State.smartStockActive = V end })
+    Tabs.Settings:AddToggle("AntiAfkToggle", { Title = "Anti-AFK Protection", Default = true, Callback = function(V) State.antiAfkActive = V end })
+    Tabs.Settings:AddToggle("AutoReconnectToggle", { Title = "Auto-Reconnect Error Prompt", Default = true, Callback = function(V) State.autoReconnectActive = V end })
+
+    -- 4. Low FPS / Background Mode
     Tabs.Settings:AddToggle("OptimizeFpsToggle", { 
-        Title = "Low FPS / Background Mode", 
+        Title = "Low FPS / Background Mode (15 FPS)", 
         Default = false, 
         Callback = function(V) 
             State.optimizeFpsActive = V 
@@ -79,38 +67,10 @@ return function(HUB)
         end 
     })
 
-    -- 6. Inputs Konfigurasi
-    Tabs.Settings:AddInput("MinCoinInput", { 
-        Title = "Minimum Safe Coins", 
-        Default = "0", 
-        Numeric = true, 
-        Finished = true, 
-        Callback = function(V) 
-            State.minCoinThreshold = tonumber(V) or 0 
-        end 
-    })
+    -- Inputs
+    Tabs.Settings:AddInput("WebhookInput", { Title = "Discord Webhook URL", Default = "", Finished = true, Callback = function(V) State.webhookUrl = V end })
+    Tabs.Settings:AddInput("DelayInput", { Title = "Buy Delay (Seconds)", Default = "0.2", Numeric = true, Finished = false, Callback = function(V) local n = tonumber(V) if n and n >= 0.01 then State.buyDelay = n end end })
 
-    Tabs.Settings:AddInput("WebhookInput", { 
-        Title = "Discord Webhook URL", 
-        Default = "", 
-        Finished = true, 
-        Callback = function(V) 
-            State.webhookUrl = V 
-        end 
-    })
-
-    Tabs.Settings:AddInput("DelayInput", { 
-        Title = "Buy Delay (Seconds)", 
-        Default = "0.2", 
-        Numeric = true, 
-        Finished = false, 
-        Callback = function(V) 
-            local n = tonumber(V) 
-            if n and n >= 0.01 then State.buyDelay = n end 
-        end 
-    })
-
-    -- Integrasi SaveManager & InterfaceManager Fluent UI
     HUB.InterfaceManager:SetLibrary(Fluent)
     HUB.SaveManager:SetLibrary(Fluent)
     HUB.InterfaceManager:BuildInterfaceSection(Tabs.Settings)
