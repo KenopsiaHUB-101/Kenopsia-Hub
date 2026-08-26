@@ -31,7 +31,7 @@ return function(HUB)
         State.bufferCache[itemName] = buffer.fromstring(string.format("\0\6\0garden%s\0%s", string.char(#itemName), itemName))
     end
 
-    Tabs.Store:AddParagraph({ Title = "Auto Buy Store", Content = "Pilih item untuk dibeli otomatis saat stok tersedia." })
+    Tabs.Store:AddParagraph({ Title = "Auto Buy Store", Content = "Pilih item untuk dibeli otomatis." })
     
     Tabs.Store:AddToggle("AutoBuyToggle", {
         Title = "Enable Auto Buy",
@@ -70,25 +70,34 @@ return function(HUB)
         end
     end)
 
-    local function checkStock(name)
-        if not State.smartStockActive then return 999 end
-        if State.serverStockCache[name] ~= nil and State.serverStockCache[name] <= 0 then return 0 end
-        return 999
+    local lastWebhookTime = 0
+    local function sendWebhookRateLimited(itemName)
+        if State.webhookUrl == "" or not State.webhookUrl:match("discord.com/api/webhooks") then return end
+        if os.clock() - lastWebhookTime < 1.5 then return end -- Anti Rate-Limit Shield (Max 1 kirim per 1.5 detik)
+        lastWebhookTime = os.clock()
+        pcall(function()
+            request({ Url = State.webhookUrl, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = HttpService:JSONEncode({ ["embeds"] = {{ ["title"] = "Kenopsia HUB - Purchased!", ["description"] = HUB.getCleanDisplayName(itemName), ["color"] = 65280 }} }) })
+        end)
+    end
+
+    local function playBuySound()
+        if not State.audioAlertActive then return end
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://459066276"
+        sound.Volume = 0.5
+        sound.Parent = workspace
+        sound:Play()
+        game:GetService("Debris"):AddItem(sound, 2)
     end
 
     local function beliItem(itemName)
-        if checkStock(itemName) <= 0 then return end
+        if State.smartStockActive and State.serverStockCache[itemName] and State.serverStockCache[itemName] <= 0 then return end
         if State.bufferCache[itemName] then
             pcall(function() merchantRemote:FireServer(State.bufferCache[itemName], {}) end)
             State.sessionStats.itemsBought = State.sessionStats.itemsBought + 1
             if State.addLog then State.addLog("Buy: " .. HUB.getCleanDisplayName(itemName)) end
-            if State.webhookUrl ~= "" and State.webhookUrl:match("discord.com/api/webhooks") then
-                task.spawn(function()
-                    pcall(function()
-                        request({ Url = State.webhookUrl, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = HttpService:JSONEncode({ ["embeds"] = {{ ["title"] = "Kenopsia HUB - Purchased!", ["description"] = HUB.getCleanDisplayName(itemName), ["color"] = 65280 }} }) })
-                    end)
-                end)
-            end
+            playBuySound()
+            task.spawn(function() sendWebhookRateLimited(itemName) end)
         end
     end
 
@@ -103,4 +112,3 @@ return function(HUB)
         end
     end)
 end
-
