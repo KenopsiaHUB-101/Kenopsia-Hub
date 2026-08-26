@@ -17,4 +17,3 @@ loadstring(game:HttpGet(baseUrl .. "Settings.lua"))()(HUB)      -- 4. Settings
 
 -- Step 3: Load Konfigurasi Tersimpan
 HUB.SaveManager:LoadAutoloadConfig()
-
