@@ -41,10 +41,10 @@ if shopModule then shopModule(HUB) end
 local miscModule = safeLoad("misc.lua")
 if miscModule then miscModule(HUB) end
 
-local monitoringModule = safeLoad("Monitoring.lua")
+local monitoringModule = safeLoad("monitoring.lua")
 if monitoringModule then monitoringModule(HUB) end
 
-local settingsModule = safeLoad("Settings.lua")
+local settingsModule = safeLoad("settings.lua")
 if settingsModule then settingsModule(HUB) end
 
 -- 4. Load Config
