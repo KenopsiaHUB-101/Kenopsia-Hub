@@ -8,7 +8,7 @@ return function(HUB)
 
     Tabs.Settings:AddParagraph({ Title = "Advanced Settings", Content = "Konfigurasi sistem, jaringan & keamanan." })
 
-    -- 1. Server Hop (Low Player Server & Rejoin)
+    -- 1. Server Hop & Rejoin
     Tabs.Settings:AddButton({
         Title = "Server Hop (Pindah Server Sepi)",
         Description = "Cari server baru yang lebih sedikit pemainnya.",
@@ -31,7 +31,7 @@ return function(HUB)
         Callback = function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end
     })
 
-    -- 2. Streamproof & Floating Button Toggle
+    -- 2. Streamproof & Audio Alert
     Tabs.Settings:AddToggle("StreamproofToggle", {
         Title = "Streamproof Mode (Sembunyikan Username)",
         Default = false,
@@ -52,12 +52,12 @@ return function(HUB)
         end
     })
 
-    -- 3. Auto AFK & Auto Reconnect
+    -- 3. Proteksi
     Tabs.Settings:AddToggle("SmartStockToggle", { Title = "Smart Stock Check", Default = true, Callback = function(V) State.smartStockActive = V end })
     Tabs.Settings:AddToggle("AntiAfkToggle", { Title = "Anti-AFK Protection", Default = true, Callback = function(V) State.antiAfkActive = V end })
     Tabs.Settings:AddToggle("AutoReconnectToggle", { Title = "Auto-Reconnect Error Prompt", Default = true, Callback = function(V) State.autoReconnectActive = V end })
 
-    -- 4. Low FPS / Background Mode
+    -- 4. Mode Hemat FPS
     Tabs.Settings:AddToggle("OptimizeFpsToggle", { 
         Title = "Low FPS / Background Mode (15 FPS)", 
         Default = false, 
