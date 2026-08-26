@@ -4,7 +4,7 @@ if getgenv().KenopsiaRunning then
 end
 getgenv().KenopsiaRunning = true
 
-local baseUrl = "https://raw.githubusercontent.com/USERNAME/NAMA-REPO/main/"
+local baseUrl = "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/main/"
 
 -- Step 1: Inisialisasi Core UI & Shared State
 local HUB = loadstring(game:HttpGet(baseUrl .. "ui.lua"))()
