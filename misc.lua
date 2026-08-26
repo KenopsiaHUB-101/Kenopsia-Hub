@@ -8,31 +8,37 @@ return function(HUB)
     Tabs.Misc:AddParagraph({ Title = "🛠️ Movement & Player Utilities", Content = "Modifikasi pergerakan dan visual pemain." })
 
     -- 1. WalkSpeed & JumpPower
-    local normalSpeed = 16
-    local normalJump = 50
-
     Tabs.Misc:AddSlider("WalkSpeedSlider", {
         Title = "Walk Speed",
-        Default = 16, Min = 16, Max = 150, SubText = "Kecepatan Jalan Karakter",
+        Description = "Kecepatan Jalan Karakter",
+        Default = 16,
+        Min = 16,
+        Max = 150,
+        Rounding = 0,
         Callback = function(V)
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                LocalPlayer.Character.Humanoid.WalkSpeed = V
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = V
             end
         end
     })
 
     Tabs.Misc:AddSlider("JumpPowerSlider", {
         Title = "Jump Power",
-        Default = 50, Min = 50, Max = 200, SubText = "Tinggi Lompatan Karakter",
+        Description = "Tinggi Lompatan Karakter",
+        Default = 50,
+        Min = 50,
+        Max = 200,
+        Rounding = 0,
         Callback = function(V)
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                LocalPlayer.Character.Humanoid.UseJumpPower = true
-                LocalPlayer.Character.Humanoid.JumpPower = V
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                hum.UseJumpPower = true
+                hum.JumpPower = V
             end
         end
     })
 
-    -- 2. Player ESP (Highlight Pemain Lain)
+    -- 2. Player ESP
     local playerEspActive = false
     local espHighlights = {}
 
@@ -61,7 +67,7 @@ return function(HUB)
     end
 
     Tabs.Misc:AddToggle("PlayerEspToggle", {
-        Title = "Player ESP (Highlight Pemain Lain)",
+        Title = "Player ESP (Highlight Pemain)",
         Default = false,
         Callback = function(V)
             playerEspActive = V
@@ -69,20 +75,13 @@ return function(HUB)
         end
     })
 
-    Players.PlayerAdded:Connect(function(plr)
-        plr.CharacterAdded:Connect(function()
-            task.wait(1)
-            if playerEspActive then updatePlayerEsp() end
-        end)
-    end)
-
     -- 3. Smart Noclip
     local smartNoclipActive = false
     RunService.Stepped:Connect(function()
         if not getgenv().KenopsiaRunning then return end
         if smartNoclipActive and LocalPlayer.Character then
             for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" and part.Name ~= "LowerTorso" then
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                     part.CanCollide = false
                 end
             end
@@ -90,7 +89,7 @@ return function(HUB)
     end)
 
     Tabs.Misc:AddToggle("SmartNoclipToggle", {
-        Title = "Smart Noclip (Tembus Reruntuhan)",
+        Title = "Smart Noclip",
         Default = false,
         Callback = function(V) smartNoclipActive = V end
     })
@@ -101,7 +100,7 @@ return function(HUB)
     local bodyVel, bodyGyro
 
     Tabs.Misc:AddToggle("FlyToggle", {
-        Title = "Player Fly (Terbang Bebas)",
+        Title = "Player Fly (Terbang)",
         Default = false,
         Callback = function(V)
             flyingActive = V
@@ -110,10 +109,12 @@ return function(HUB)
             local root = char.HumanoidRootPart
 
             if flyingActive then
-                bodyVel = Instance.new("BodyVelocity", root)
-                bodyGyro = Instance.new("BodyGyro", root)
+                bodyVel = Instance.new("BodyVelocity")
+                bodyGyro = Instance.new("BodyGyro")
                 bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
                 bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+                bodyVel.Parent = root
+                bodyGyro.Parent = root
                 
                 task.spawn(function()
                     while flyingActive and getgenv().KenopsiaRunning do
@@ -140,9 +141,9 @@ return function(HUB)
         end
     })
 
-    -- 5. Auto Flip & Debris
+    -- 5. Utilitas Tambahan
     Tabs.Misc:AddButton({
-        Title = "Auto Flip Vehicle / Machine",
+        Title = "Auto Flip Vehicle / Character",
         Callback = function()
             local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if root then root.CFrame = CFrame.new(root.Position + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(root.Orientation.Y), 0) end
@@ -154,7 +155,7 @@ return function(HUB)
         Callback = function()
             local count = 0
             for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part.Anchored and not part.Parent:FindFirstChild("Humanoid") then
+                if part:IsA("BasePart") and not part.Anchored and not part.Parent:FindFirstChildOfClass("Humanoid") then
                     if not part.Parent:IsA("Accessory") then part:Destroy() count = count + 1 end
                 end
             end
