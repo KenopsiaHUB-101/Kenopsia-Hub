@@ -8,10 +8,40 @@ return function(HUB)
 
     Tabs.Settings:AddParagraph({ Title = "Advanced Settings", Content = "Konfigurasi sistem & keamanan." })
 
-    Tabs.Settings:AddToggle("SmartStockToggle", { Title = "Smart Stock Check", Default = true, Callback = function(V) State.smartStockActive = V end })
+    -- 1. Pilihan Bahasa (Language Dropdown)
+    Tabs.Settings:AddDropdown("LanguageDropdown", {
+        Title = "Language / Bahasa",
+        Values = {"English", "Indonesia"},
+        Default = State.currentLang or "English",
+        Callback = function(Value)
+            State.currentLang = Value
+            Fluent:Notify({ 
+                Title = "Language Changed", 
+                Content = "Bahasa diubah ke: " .. Value, 
+                Duration = 3 
+            })
+            -- Catatan: Anda bisa menambahkan logika terjemahan teks di sini jika ingin script-nya bilingual penuh.
+        end
+    })
+
+    -- 2. Smart Stock Check
+    Tabs.Settings:AddToggle("SmartStockToggle", { 
+        Title = "Smart Stock Check", 
+        Default = true, 
+        Callback = function(V) 
+            State.smartStockActive = V 
+        end 
+    })
     
-    -- Anti-AFK Logic
-    Tabs.Settings:AddToggle("AntiAfkToggle", { Title = "Anti-AFK Protection", Default = true, Callback = function(V) State.antiAfkActive = V end })
+    -- 3. Anti-AFK Protection
+    Tabs.Settings:AddToggle("AntiAfkToggle", { 
+        Title = "Anti-AFK Protection", 
+        Default = true, 
+        Callback = function(V) 
+            State.antiAfkActive = V 
+        end 
+    })
+    
     LocalPlayer.Idled:Connect(function()
         if getgenv().KenopsiaRunning and State.antiAfkActive then
             VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -20,8 +50,15 @@ return function(HUB)
         end
     end)
 
-    -- Auto Reconnect Logic
-    Tabs.Settings:AddToggle("AutoReconnectToggle", { Title = "Auto-Reconnect", Default = true, Callback = function(V) State.autoReconnectActive = V end })
+    -- 4. Auto-Reconnect
+    Tabs.Settings:AddToggle("AutoReconnectToggle", { 
+        Title = "Auto-Reconnect", 
+        Default = true, 
+        Callback = function(V) 
+            State.autoReconnectActive = V 
+        end 
+    })
+    
     local CoreGui = game:GetService("CoreGui")
     if CoreGui:FindFirstChild("RobloxPromptGui") and CoreGui.RobloxPromptGui:FindFirstChild("promptOverlay") then
         CoreGui.RobloxPromptGui.promptOverlay.ChildAdded:Connect(function(child)
@@ -32,7 +69,7 @@ return function(HUB)
         end)
     end
 
-    -- Optimized FPS Toggle
+    -- 5. Low FPS / Background Mode
     Tabs.Settings:AddToggle("OptimizeFpsToggle", { 
         Title = "Low FPS / Background Mode", 
         Default = false, 
@@ -42,13 +79,40 @@ return function(HUB)
         end 
     })
 
-    Tabs.Settings:AddInput("MinCoinInput", { Title = "Minimum Safe Coins", Default = "0", Numeric = true, Finished = true, Callback = function(V) State.minCoinThreshold = tonumber(V) or 0 end })
-    Tabs.Settings:AddInput("WebhookInput", { Title = "Discord Webhook URL", Default = "", Finished = true, Callback = function(V) State.webhookUrl = V end })
-    Tabs.Settings:AddInput("DelayInput", { Title = "Buy Delay (Seconds)", Default = "0.2", Numeric = true, Finished = false, Callback = function(V) local n = tonumber(V) if n and n >= 0.01 then State.buyDelay = n end end })
+    -- 6. Inputs Konfigurasi
+    Tabs.Settings:AddInput("MinCoinInput", { 
+        Title = "Minimum Safe Coins", 
+        Default = "0", 
+        Numeric = true, 
+        Finished = true, 
+        Callback = function(V) 
+            State.minCoinThreshold = tonumber(V) or 0 
+        end 
+    })
 
+    Tabs.Settings:AddInput("WebhookInput", { 
+        Title = "Discord Webhook URL", 
+        Default = "", 
+        Finished = true, 
+        Callback = function(V) 
+            State.webhookUrl = V 
+        end 
+    })
+
+    Tabs.Settings:AddInput("DelayInput", { 
+        Title = "Buy Delay (Seconds)", 
+        Default = "0.2", 
+        Numeric = true, 
+        Finished = false, 
+        Callback = function(V) 
+            local n = tonumber(V) 
+            if n and n >= 0.01 then State.buyDelay = n end 
+        end 
+    })
+
+    -- Integrasi SaveManager & InterfaceManager Fluent UI
     HUB.InterfaceManager:SetLibrary(Fluent)
     HUB.SaveManager:SetLibrary(Fluent)
     HUB.InterfaceManager:BuildInterfaceSection(Tabs.Settings)
     HUB.SaveManager:BuildConfigSection(Tabs.Settings)
 end
-
