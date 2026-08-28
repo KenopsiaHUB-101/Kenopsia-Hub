@@ -1,165 +1,76 @@
 return function(HUB)
-    local Tabs = HUB.Tabs
-    local Fluent = HUB.Fluent
+    local State = HUB.State
     local Players = game:GetService("Players")
-    local RunService = game:GetService("RunService")
     local LocalPlayer = Players.LocalPlayer
+    local RunService = game:GetService("RunService")
 
-    Tabs.Misc:AddParagraph({ Title = "🛠️ Movement & Player Utilities", Content = "Modifikasi pergerakan dan visual pemain." })
-
-    -- 1. WalkSpeed & JumpPower
-    Tabs.Misc:AddSlider("WalkSpeedSlider", {
-        Title = "Walk Speed",
-        Description = "Kecepatan Jalan Karakter",
-        Default = 16,
-        Min = 16,
-        Max = 150,
-        Rounding = 0,
-        Callback = function(V)
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = V
-            end
-        end
-    })
-
-    Tabs.Misc:AddSlider("JumpPowerSlider", {
-        Title = "Jump Power",
-        Description = "Tinggi Lompatan Karakter",
-        Default = 50,
-        Min = 50,
-        Max = 200,
-        Rounding = 0,
-        Callback = function(V)
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+    -- 1. Anti-AFK
+    HUB.AntiAFK = task.spawn(function()
+        while State.antiAFK and getgenv().KenopsiaRunning do
+            task.wait(30)
+            if LocalPlayer.Character then
                 local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                hum.UseJumpPower = true
-                hum.JumpPower = V
-            end
-        end
-    })
-
-    -- 2. Player ESP
-    local playerEspActive = false
-    local espHighlights = {}
-
-    local function updatePlayerEsp()
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer and plr.Character then
-                if playerEspActive then
-                    if not espHighlights[plr] or not espHighlights[plr].Parent then
-                        local hl = Instance.new("Highlight")
-                        hl.Name = "KenopsiaPlayerESP"
-                        hl.FillColor = Color3.fromRGB(0, 255, 150)
-                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        hl.FillTransparency = 0.5
-                        hl.Adornee = plr.Character
-                        hl.Parent = plr.Character
-                        espHighlights[plr] = hl
-                    end
-                else
-                    if espHighlights[plr] then
-                        espHighlights[plr]:Destroy()
-                        espHighlights[plr] = nil
-                    end
-                end
-            end
-        end
-    end
-
-    Tabs.Misc:AddToggle("PlayerEspToggle", {
-        Title = "Player ESP (Highlight Pemain)",
-        Default = false,
-        Callback = function(V)
-            playerEspActive = V
-            updatePlayerEsp()
-        end
-    })
-
-    -- 3. Smart Noclip
-    local smartNoclipActive = false
-    RunService.Stepped:Connect(function()
-        if not getgenv().KenopsiaRunning then return end
-        if smartNoclipActive and LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                    part.CanCollide = false
+                if hum then
+                    -- Jump to simulate activity
+                    hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                    task.wait(0.1)
+                    hum:ChangeState(Enum.HumanoidStateType.Running)
                 end
             end
         end
     end)
 
-    Tabs.Misc:AddToggle("SmartNoclipToggle", {
-        Title = "Smart Noclip",
-        Default = false,
-        Callback = function(V) smartNoclipActive = V end
-    })
-
-    -- 4. Fly System
-    local flyingActive = false
-    local flySpeed = 50
-    local bodyVel, bodyGyro
-
-    Tabs.Misc:AddToggle("FlyToggle", {
-        Title = "Player Fly (Terbang)",
-        Default = false,
-        Callback = function(V)
-            flyingActive = V
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-            local root = char.HumanoidRootPart
-
-            if flyingActive then
-                bodyVel = Instance.new("BodyVelocity")
-                bodyGyro = Instance.new("BodyGyro")
-                bodyVel.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-                bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-                bodyVel.Parent = root
-                bodyGyro.Parent = root
-                
-                task.spawn(function()
-                    while flyingActive and getgenv().KenopsiaRunning do
-                        local camCF = workspace.CurrentCamera.CFrame
-                        local moveDir = Vector3.zero
-                        local UIS = game:GetService("UserInputService")
-                        
-                        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camCF.LookVector end
-                        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camCF.LookVector end
-                        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCF.RightVector end
-                        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCF.RightVector end
-
-                        bodyVel.Velocity = moveDir * flySpeed
-                        bodyGyro.CFrame = camCF
-                        task.wait()
-                    end
-                    if bodyVel then bodyVel:Destroy() end
-                    if bodyGyro then bodyGyro:Destroy() end
-                end)
-            else
-                if bodyVel then bodyVel:Destroy() end
-                if bodyGyro then bodyGyro:Destroy() end
-            end
-        end
-    })
-
-    -- 5. Utilitas Tambahan
-    Tabs.Misc:AddButton({
-        Title = "Auto Flip Vehicle / Character",
-        Callback = function()
-            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root then root.CFrame = CFrame.new(root.Position + Vector3.new(0, 5, 0)) * CFrame.Angles(0, math.rad(root.Orientation.Y), 0) end
-        end
-    })
-
-    Tabs.Misc:AddButton({
-        Title = "Clear Local Debris (Anti-Lag)",
-        Callback = function()
-            local count = 0
-            for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part.Anchored and not part.Parent:FindFirstChildOfClass("Humanoid") then
-                    if not part.Parent:IsA("Accessory") then part:Destroy() count = count + 1 end
+    -- 2. Fast Walk
+    HUB.FastWalk = task.spawn(function()
+        local originalSpeed = 16
+        while State.fastWalk and getgenv().KenopsiaRunning do
+            if LocalPlayer.Character then
+                local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.WalkSpeed = 32 -- Double speed
                 end
             end
-            Fluent:Notify({ Title = "Anti-Lag", Content = "Menghapus " .. count .. " puing!", Duration = 3 })
+            task.wait(0.1)
         end
-    })
+        -- Restore speed when disabled
+        if LocalPlayer.Character then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = originalSpeed
+            end
+        end
+    end)
+
+    -- 3. ESP (Basic Implementation)
+    HUB.ESP = task.spawn(function()
+        while State.esp and getgenv().KenopsiaRunning do
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    local head = player.Character:FindFirstChild("Head")
+                    if head then
+                        -- Simple ESP: Highlight or Box (using Highlight object is less detectable)
+                        local highlight = Instance.new("Highlight")
+                        highlight.FillTransparency = 0.5
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        highlight.OutlineTransparency = 0
+                        highlight.Parent = head
+                        task.wait(0.1) -- Cleanup every frame to avoid clutter
+                        highlight:Destroy()
+                    end
+                end
+            end
+            task.wait(0.05)
+        end
+    end)
+
+    -- 4. Auto Reconnect
+    HUB.AutoReconnect = task.spawn(function()
+        while getgenv().KenopsiaRunning do
+            if not LocalPlayer then
+                task.wait(1)
+                -- Roblox handles reconnection automatically, but we can trigger UI refresh
+            end
+            task.wait(5)
+        end
+    end)
 end
