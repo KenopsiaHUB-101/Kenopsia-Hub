@@ -1,78 +1,119 @@
 return function(HUB)
+    local Fluent = HUB.Fluent
     local Tabs = HUB.Tabs
     local State = HUB.State
-    local Fluent = HUB.Fluent
-    local TeleportService = game:GetService("TeleportService")
-    local HttpService = game:GetService("HttpService")
-    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local SaveManager = HUB.SaveManager
 
-    Tabs.Settings:AddParagraph({ Title = "Advanced Settings", Content = "Konfigurasi sistem, jaringan & keamanan." })
+    Tabs.Settings:AddParagraph({ Title = "⚙️ Settings", Content = "Configure your hub." })
 
-    -- 1. Server Hop & Rejoin
-    Tabs.Settings:AddButton({
-        Title = "Server Hop (Pindah Server Sepi)",
-        Description = "Cari server baru yang lebih sedikit pemainnya.",
-        Callback = function()
-            Fluent:Notify({ Title = "Server Hop", Content = "Mencari server sepi...", Duration = 3 })
-            pcall(function()
-                local servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/0?sortOrder=Asc&limit=100")).data
-                for _, s in pairs(servers) do
-                    if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                        TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, LocalPlayer)
-                        break
-                    end
+    -- 1. Bypass Toggle
+    Tabs.Settings:AddToggle({
+        Title = "Enable Bypass",
+        Description = "Toggle anti-cheat bypass.",
+        Default = State.bypassEnabled,
+        Callback = function(value)
+            State.bypassEnabled = value
+            HUB.Bypass.SetBypass(value) -- Call from bypass.lua
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 2. Auto Buy
+    Tabs.Settings:AddToggle({
+        Title = "Auto Buy",
+        Default = State.autoBuy,
+        Callback = function(value)
+            State.autoBuy = value
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 3. Smart Stock
+    Tabs.Settings:AddToggle({
+        Title = "Smart Stock",
+        Default = State.smartStock,
+        Callback = function(value)
+            State.smartStock = value
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 4. Anti-AFK
+    Tabs.Settings:AddToggle({
+        Title = "Anti-AFK",
+        Default = State.antiAFK,
+        Callback = function(value)
+            State.antiAFK = value
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 5. Fast Walk
+    Tabs.Settings:AddToggle({
+        Title = "Fast Walk",
+        Default = State.fastWalk,
+        Callback = function(value)
+            State.fastWalk = value
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 6. ESP
+    Tabs.Settings:AddToggle({
+        Title = "ESP",
+        Default = State.esp,
+        Callback = function(value)
+            State.esp = value
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 7. Audio Alert
+    Tabs.Settings:AddToggle({
+        Title = "Audio Alerts",
+        Default = State.audioAlert,
+        Callback = function(value)
+            State.audioAlert = value
+            SaveManager:SaveConfig()
+        end
+    })
+
+    -- 8. Streamproof
+    Tabs.Settings:AddToggle({
+        Title = "Streamproof",
+        Description = "Hide username from streamers.",
+        Default = State.streamproof,
+        Callback = function(value)
+            State.streamproof = value
+            if value then
+                -- Change username to something generic
+                if LocalPlayer then
+                    LocalPlayer.Name = "Player"
                 end
-            end)
+            else
+                if LocalPlayer then
+                    LocalPlayer.Name = "KenopsiaUser"
+                end
+            end
+            SaveManager:SaveConfig()
         end
     })
 
+    -- 9. Save Config
     Tabs.Settings:AddButton({
-        Title = "Rejoin Server Current",
-        Callback = function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end
-    })
-
-    -- 2. Streamproof & Audio Alert
-    Tabs.Settings:AddToggle("StreamproofToggle", {
-        Title = "Streamproof Mode (Sembunyikan Username)",
-        Default = false,
-        Callback = function(V) State.streamproofActive = V end
-    })
-
-    Tabs.Settings:AddToggle("AudioAlertToggle", {
-        Title = "Audio Alert Saat Beli Item",
-        Default = true,
-        Callback = function(V) State.audioAlertActive = V end
-    })
-
-    Tabs.Settings:AddToggle("FloatingButtonToggle", {
-        Title = "Tampilkan Tombol Melayang (Mobile)",
-        Default = true,
-        Callback = function(V)
-            if HUB.FloatingButton then HUB.FloatingButton.Enabled = V end
+        Title = "Save Settings",
+        Callback = function()
+            SaveManager:SaveConfig()
+            Fluent:Notify({ Title = "Saved", Content = "Settings saved successfully.", Duration = 3 })
         end
     })
 
-    -- 3. Proteksi
-    Tabs.Settings:AddToggle("SmartStockToggle", { Title = "Smart Stock Check", Default = true, Callback = function(V) State.smartStockActive = V end })
-    Tabs.Settings:AddToggle("AntiAfkToggle", { Title = "Anti-AFK Protection", Default = true, Callback = function(V) State.antiAfkActive = V end })
-    Tabs.Settings:AddToggle("AutoReconnectToggle", { Title = "Auto-Reconnect Error Prompt", Default = true, Callback = function(V) State.autoReconnectActive = V end })
-
-    -- 4. Mode Hemat FPS
-    Tabs.Settings:AddToggle("OptimizeFpsToggle", { 
-        Title = "Low FPS / Background Mode (15 FPS)", 
-        Default = false, 
-        Callback = function(V) 
-            State.optimizeFpsActive = V 
-            if V then setfpscap(15) else setfpscap(999) end 
-        end 
+    -- 10. Load Config
+    Tabs.Settings:AddButton({
+        Title = "Load Settings",
+        Callback = function()
+            SaveManager:LoadConfig()
+            Fluent:Notify({ Title = "Loaded", Content = "Settings loaded.", Duration = 3 })
+        end
     })
-
-    -- Inputs
-    Tabs.Settings:AddInput("WebhookInput", { Title = "Discord Webhook URL", Default = "", Finished = true, Callback = function(V) State.webhookUrl = V end })
-    Tabs.Settings:AddInput("DelayInput", { Title = "Buy Delay (Seconds)", Default = "0.2", Numeric = true, Finished = false, Callback = function(V) local n = tonumber(V) if n and n >= 0.01 then State.buyDelay = n end end })
-
-    HUB.InterfaceManager:SetLibrary(Fluent)
-    HUB.SaveManager:SetLibrary(Fluent)
-    HUB.InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-    HUB.SaveManager:BuildConfigSection(Tabs.Settings)
 end
