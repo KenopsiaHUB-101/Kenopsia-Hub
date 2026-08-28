@@ -1,33 +1,47 @@
 return function(HUB)
+    local Fluent = HUB.Fluent
     local Tabs = HUB.Tabs
-    local State = HUB.State
-    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
 
-    local StatsParagraph = Tabs.Monitoring:AddParagraph({ Title = "📊 Session Statistics", Content = "Monitoring aktif..." })
-    local LogsParagraph = Tabs.Monitoring:AddParagraph({ Title = "📜 Purchase History", Content = "Belum ada log." })
-    local DevInfoParagraph = Tabs.Monitoring:AddParagraph({ Title = "⚡ Real-time Memory Status", Content = "Loading..." })
+    Tabs.Monitoring:AddParagraph({ Title = "📊 System Monitor", Content = "Real-time stats." })
 
-    State.addLog = function(msg)
-        local timeStr = os.date("%H:%M:%S")
-        table.insert(State.logHistory, 1, string.format("[%s] %s", timeStr, msg))
-        if #State.logHistory > 15 then table.remove(State.logHistory, 16) end
-        
-        local userDisplay = State.streamproofActive and "[PROTECTED USER]" or LocalPlayer.Name
-        local uptimeSec = os.time() - State.sessionStats.startTime
-        local statsHeader = string.format("👤 User: %s\n⏱️ Uptime: %02d:%02d:%02d | 📦 Total Bought: %d\n\n", 
-            userDisplay, math.floor(uptimeSec / 3600), math.floor((uptimeSec % 3600) / 60), uptimeSec % 60, State.sessionStats.itemsBought)
-        
-        StatsParagraph:SetDesc(statsHeader)
-        LogsParagraph:SetDesc(table.concat(State.logHistory, "\n"))
-    end
+    -- 1. Memory Monitor
+    local memLabel = Tabs.Monitoring:AddLabel({ Title = "Lua Memory: Loading..." })
+    local gcLabel = Tabs.Monitoring:AddLabel({ Title = "GC Load: Loading..." })
 
     task.spawn(function()
         while getgenv().KenopsiaRunning do
             task.wait(2)
-            pcall(function()
-                local memUsage = gcinfo() or collectgarbage("count")
-                DevInfoParagraph:SetDesc(string.format("• Lua Memory Usage: %.2f MB\n• Streamproof: %s", memUsage / 1024, State.streamproofActive and "ON" or "OFF"))
-            end)
+            local mem = collectgarbage("count")
+            local gc = gcinfo()
+            memLabel:SetText("Lua Memory: " .. string.format("%.2f", mem) .. " KB")
+            gcLabel:SetText("GC Load: " .. string.format("%.2f", gc) .. "%")
+        end
+    end)
+
+    -- 2. Inventory Stats (Example)
+    local invLabel = Tabs.Monitoring:AddLabel({ Title = "Inventory: 0 Items" })
+    task.spawn(function()
+        while getgenv().KenopsiaRunning do
+            task.wait(1)
+            -- Replace 'Inventory' with your game's actual inventory structure
+            local inventory = ReplicatedStorage:FindFirstChild("Inventory") or LocalPlayer:FindFirstChild("Backpack")
+            if inventory then
+                local count = #inventory:GetChildren()
+                invLabel:SetText("Inventory: " .. count .. " Items")
+            end
+        end
+    end)
+
+    -- 3. Network Latency
+    local pingLabel = Tabs.Monitoring:AddLabel({ Title = "Ping: Loading..." })
+    task.spawn(function()
+        while getgenv().KenopsiaRunning do
+            task.wait(5)
+            local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"].Value
+            pingLabel:SetText("Ping: " .. ping .. " ms")
         end
     end)
 end
