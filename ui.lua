@@ -14,8 +14,6 @@ if not Debug then
     }
 end
 
-if Debug.Info then Debug:Info("Loading UI module...") end
-
 -- Load Fluent UI library with proper error handling
 local Fluent = nil
 local fluentLoaded, fluentErr = pcall(function()
@@ -121,68 +119,83 @@ HUB.getCleanDisplayName = function(rawName)
 end
 
 -- ==================== FLOATING BUTTON ====================
+-- Wrap in pcall so floating button errors don't abort the whole UI module
 if Debug.Debug then Debug:Debug("Creating floating button...") end
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KenopsiaFloatingGui"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = game:GetService("CoreGui")
+local floatingSuccess = pcall(function()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "KenopsiaFloatingGui"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game:GetService("CoreGui")
 
-local toggleBtn = Instance.new("ImageButton")
-toggleBtn.Name = "ToggleBtn"
-toggleBtn.Parent = screenGui
-toggleBtn.Size = UDim2.fromOffset(50, 50)
-toggleBtn.Position = UDim2.new(0, 15, 0.4, 0)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-toggleBtn.Active = true
-toggleBtn.Draggable = true
+    local toggleBtn = Instance.new("ImageButton")
+    toggleBtn.Name = "ToggleBtn"
+    toggleBtn.Parent = screenGui
+    toggleBtn.Size = UDim2.fromOffset(50, 50)
+    toggleBtn.Position = UDim2.new(0, 15, 0.4, 0)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    toggleBtn.Active = true
+    toggleBtn.Draggable = true
 
-local corner = Instance.new("UICorner", toggleBtn)
-corner.CornerRadius = UDim.new(0, 12)
+    local corner = Instance.new("UICorner", toggleBtn)
+    corner.CornerRadius = UDim.new(0, 12)
 
--- Try to load logo
-local logoUrl = "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/main/logo.png"
-local logoPath = "kenopsia_logo.png"
+    -- Try to load logo
+    local logoUrl = "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/main/logo.png"
+    local logoPath = "kenopsia_logo.png"
 
-pcall(function()
-    if getcustomasset and writefile and isfile then
-        if not isfile(logoPath) then
-            local logoData = game:HttpGet(logoUrl, true)
-            if logoData then
-                writefile(logoPath, logoData)
-                if Debug.Debug then Debug:Debug("Logo saved to file") end
+    pcall(function()
+        if getcustomasset and writefile and isfile then
+            if not isfile(logoPath) then
+                local logoData = game:HttpGet(logoUrl, true)
+                if logoData then
+                    writefile(logoPath, logoData)
+                    if Debug.Debug then Debug:Debug("Logo saved to file") end
+                end
+            end
+            if isfile(logoPath) then
+                toggleBtn.Image = getcustomasset(logoPath)
+                if Debug.Success then Debug:Success("Kenopsia Logo loaded successfully") end
             end
         end
-        if isfile(logoPath) then
-            toggleBtn.Image = getcustomasset(logoPath)
-            if Debug.Success then Debug:Success("Logo loaded successfully") end
-        end
-    end
-end)
-
--- Virtual input manager for stable mobile toggle
-local VirtualInputManager = game:GetService("VirtualInputManager")
-
-local function safeToggleUI()
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-        task.wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
     end)
+
+    -- Virtual input manager for stable mobile toggle
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    local function safeToggleUI()
+        pcall(function()
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+            task.wait(0.05)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+        end)
+    end
+
+    -- Handle button input - use InputBegan/InputEnded for maximum compatibility
+    -- (TouchEnded is not available on all executors and causes crashes)
+    pcall(function()
+        toggleBtn.MouseButton1Click:Connect(function()
+            safeToggleUI()
+        end)
+    end)
+    
+    pcall(function()
+        toggleBtn.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Touch 
+            or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                safeToggleUI()
+            end
+        end)
+    end)
+
+    HUB.FloatingButton = screenGui
+end)
+
+if floatingSuccess then
+    if Debug.Success then Debug:Success("Floating button created successfully") end
+else
+    if Debug.Warning then Debug:Warning("Floating button failed to create (UI will still work, use RightCtrl to toggle)") end
 end
-
--- Handle button input
-toggleBtn.TouchEnded:Connect(function()
-    safeToggleUI()
-end)
-
-toggleBtn.MouseButton1Click:Connect(function()
-    safeToggleUI()
-end)
-
-HUB.FloatingButton = screenGui
-
-if Debug.Success then Debug:Success("Floating button created successfully") end
 
 -- ==================== NOTIFICATION ====================
 pcall(function()
