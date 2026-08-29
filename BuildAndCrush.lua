@@ -1,122 +1,51 @@
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+if getgenv().KenopsiaRunning then
+    getgenv().KenopsiaRunning = false
+    task.wait(0.5)
+end
+getgenv().KenopsiaRunning = true
 
-local Window = Fluent:CreateWindow({
-    Title = "Kenopsia HUB | Build & Crush",
-    SubTitle = "Have a nice day!",
-    TabWidth = 120,
-    Size = UDim2.fromOffset(530, 450),
-    Acrylic = true,
-    Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.RightControl
-})
+local baseUrl = "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/main/"
+local currentVersion = "1.0.0"
 
-local Tabs = {
-    Store = Window:AddTab({ Title = "Store", Icon = "shopping-cart" }),
-    Misc = Window:AddTab({ Title = "MISC", Icon = "wrench" }),
-    Monitoring = Window:AddTab({ Title = "Monitoring", Icon = "activity" }),
-    Bypass = Window:AddTab({ Title = "Anti-Cheat Bypass", Icon = "shield" }), -- New Bypass Tab
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
-}
-
-local HUB = {
-    Fluent = Fluent,
-    Window = Window,
-    Tabs = Tabs,
-    SaveManager = SaveManager,
-    InterfaceManager = InterfaceManager,
-    State = {
-        selectedItems = {},
-        serverStockCache = {},
-        bufferCache = {},
-        autoBuyActive = false,
-        smartStockActive = true,
-        antiAfkActive = true,
-        autoReconnectActive = true,
-        optimizeFpsActive = false,
-        audioAlertActive = true,
-        streamproofActive = false,
-        webhookUrl = "",
-        minCoinThreshold = 0,
-        buyDelay = 0.2,
-        currentLang = "English",
-        sessionStats = { itemsBought = 0, startTime = os.time() },
-        logHistory = {},
-        addLog = nil,
-        bypassState = {
-            metaBypass = false,
-            handshakeBypass = false,
-            hookBypass = false,
-            detourBypass = false,
-            memoryBypass = false,
-            vmBypass = false,
-            signatureBypass = false,
-            integrityBypass = false,
-            allBypass = false
-        }
-    }
-}
-
-HUB.getCleanDisplayName = function(rawName)
-    local clean = rawName:gsub("(%l)(%u)", "%1 %2"):gsub("%-t%d+", ""):gsub("%-", " ")
-    return clean:gsub("(%a)([%w_']*)", function(first, rest) return first:upper() .. rest:lower() end)
+-- 1. Helper Function Fetch Script (Fail-Safe)
+local function safeLoad(file)
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(baseUrl .. file))()
+    end)
+    if not success or not result then
+        warn("[Kenopsia HUB] Gagal memuat file: " .. file .. " | Error: " .. tostring(result))
+        return nil
+    end
+    return result
 end
 
--- ==================== FLOATING BUTTON (MOBILE / LOGO GITHUB - FIX JOYSTICK) ====================
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KenopsiaFloatingGui"
-screenGui.Parent = game:GetService("CoreGui")
-
-local toggleBtn = Instance.new("ImageButton")
-toggleBtn.Name = "ToggleBtn"
-toggleBtn.Parent = screenGui
-toggleBtn.Size = UDim2.fromOffset(50, 50)
-toggleBtn.Position = UDim2.new(0, 15, 0.4, 0)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-toggleBtn.Active = true
-toggleBtn.Draggable = true
-
-local corner = Instance.new("UICorner", toggleBtn)
-corner.CornerRadius = UDim.new(0, 12)
-
--- Download & Load Logo dari GitHub Raw
-local logoUrl = "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/main/logo.png"
-local logoPath = "kenopsia_logo.png"
-
-pcall(function()
-    if getcustomasset and writefile then
-        if not (isfile and isfile(logoPath)) then
-            writefile(logoPath, game:HttpGet(logoUrl))
+-- 2. Auto-Updater Check
+task.spawn(function()
+    local versionRaw = game:HttpGet(baseUrl .. "version.json", true)
+    if versionRaw then
+        local HttpService = game:GetService("HttpService")
+        local success, data = pcall(function() return HttpService:JSONDecode(versionRaw) end)
+        if success and data and data.version and data.version ~= currentVersion then
+            print("[Kenopsia HUB] Versi baru ditemukan: " .. data.version .. " (Versi Anda: " .. currentVersion .. ")")
         end
-        toggleBtn.Image = getcustomasset(logoPath)
     end
 end)
 
--- Sistem Toggle UI yang Stabil untuk Mobile (Mencegah Joystick Freeze)
-local VirtualInputManager = game:GetService("VirtualInputManager")
+-- 3. Eksekusi Core UI & Modul Sesuai Urutan
+local HUB = safeLoad("ui.lua")
+if not HUB then return end
 
--- Fungsi simulasi penekanan tombol yang aman dengan delay
-local function safeToggleUI()
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-    -- Sedikit penundaan agar Roblox di mobile dapat memproses KeyDown dengan benar
-    task.wait(0.05) 
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
-end
+local shopModule = safeLoad("shop.lua")
+if shopModule then shopModule(HUB) end
 
--- Gunakan TouchEnded untuk input yang lebih stabil di perangkat Mobile
-toggleBtn.TouchEnded:Connect(function()
-    safeToggleUI()
-end)
+local miscModule = safeLoad("misc.lua")
+if miscModule then miscModule(HUB) end
 
--- Kasus menempel di layar jika jari meleset (untuk keamanan KeyUp)
-toggleBtn.TouchCancelled:Connect(function()
-    -- VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
-end)
+local monitoringModule = safeLoad("monitoring.lua")
+if monitoringModule then monitoringModule(HUB) end
 
-HUB.FloatingButton = screenGui
--- ================================================================================
+local settingsModule = safeLoad("settings.lua")
+if settingsModule then settingsModule(HUB) end
 
-Fluent:Notify({ Title = "Kenopsia HUB", Content = "Modular System & Custom Logo Ready!", Duration = 4 })
-
-return HUB
+-- 4. Load Config
+HUB.SaveManager:LoadAutoloadConfig()
