@@ -77,6 +77,7 @@ local Tabs = {
     Store = Window:AddTab({ Title = "Store", Icon = "shopping-cart" }),
     Misc = Window:AddTab({ Title = "MISC", Icon = "wrench" }),
     Monitoring = Window:AddTab({ Title = "Monitoring", Icon = "activity" }),
+    Bypass = Window:AddTab({ Title = "Bypass", Icon = "shield" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" }),
 }
 
@@ -210,6 +211,253 @@ pcall(function()
         Content = "UI loaded successfully! Premium features available.", 
         Duration = 4 
     })
+end)
+
+-- ==================== BYPASS TAB (PREMIUM ONLY) ====================
+-- This tab uses _G.KenopsiaBypass (set by bypass.lua) to provide:
+--   1. A button for each bypass feature
+--   2. A detection safety check before running each feature
+--   3. If SAFE  -> green confirmation notification
+--   4. If CAUTION / DANGEROUS -> Fluent Dialog with Cancel / Continue buttons
+-- The bypass module is only loaded for premium keys with the "bypass" feature,
+-- so we guard the whole tab with a check.
+pcall(function()
+    local Bypass = _G.KenopsiaBypass
+    local Premium = _G.KenopsiaPremium
+
+    -- Helper: get the Fluent interface library from globals (Fluent is local
+    -- to this module, so we use it directly).
+    local FluentLib = Fluent
+
+    if Bypass and Premium and Premium:HasFeature("bypass") then
+        if Debug.Success then Debug:Success("Building Bypass tab (premium access confirmed)") end
+
+        -- Header paragraph
+        Tabs.Bypass:AddParagraph({
+            Title = "🛡️ Anti-Cheat Bypass Suite",
+            Content = "Each feature runs a detection safety check first. Safe features execute instantly. Dangerous features show a Cancel / Continue dialog."
+        })
+
+        -- Status paragraph (updated as features run)
+        local StatusParagraph = Tabs.Bypass:AddParagraph({
+            Title = "⚡ Bypass Status",
+            Content = "Auto-bypass (safe features) runs automatically on load.\nAdvanced & permission features require manual activation below."
+        })
+
+        -- Helper: format the safety reasons into a readable string for the dialog
+        local function formatReasons(reasons)
+            local text = ""
+            for _, r in ipairs(reasons) do
+                text = text .. "• " .. r .. "\n"
+            end
+            return text ~= "" and text or "No specific reasons reported."
+        end
+
+        -- Core handler: called when any bypass button is pressed.
+        -- Runs the safety check, then either notifies (SAFE) or shows
+        -- a Cancel/Continue dialog (CAUTION / DANGEROUS).
+        local function activateBypassFeature(feature)
+            if not Bypass or not Bypass.CheckSafety then
+                if Debug.Error then Debug:Error("Bypass module not ready") end
+                return
+            end
+
+            -- Run the safety analysis (does NOT execute the bypass)
+            local assessment = Bypass.CheckSafety(feature.name)
+            local levelInfo = Bypass.SafetyChecker:GetLevelInfo(assessment.level)
+
+            if Debug.Info then
+                Debug:Info("Bypass safety: " .. feature.label .. " = " .. assessment.level)
+            end
+
+            -- If SAFE: execute immediately and show green confirmation
+            if assessment.safe then
+                local result = Bypass.ExecuteWithSafety(feature.name, true)
+                pcall(function()
+                    FluentLib:Notify({
+                        Title = "✅ SAFE — " .. levelInfo.label,
+                        Content = feature.label .. " activated successfully.\n" .. (assessment.reasons[1] or "No issues detected."),
+                        Duration = 5
+                    })
+                end)
+                if Debug.Success then
+                    Debug:Success("Bypass activated (SAFE): " .. feature.label)
+                end
+                return
+            end
+
+            -- CAUTION or DANGEROUS: show Cancel / Continue dialog
+            local dialogTitle = levelInfo.color .. " " .. levelInfo.label .. " — " .. feature.label
+            local dialogContent = levelInfo.description .. "\n\n" .. formatReasons(assessment.reasons)
+
+            -- Build the dialog content. Fluent Dialogs auto-size width but
+            -- have a max width; we keep the content concise.
+            if #dialogContent > 350 then
+                dialogContent = dialogContent:sub(1, 347) .. "..."
+            end
+
+            pcall(function()
+                Window:Dialog({
+                    Title = dialogTitle,
+                    Content = dialogContent,
+                    Buttons = {
+                        {
+                            Title = "Continue",
+                            Callback = function()
+                                -- Force-execute even though it's dangerous
+                                local result = Bypass.ExecuteWithSafety(feature.name, true)
+                                if result and result.executed then
+                                    pcall(function()
+                                        FluentLib:Notify({
+                                            Title = "Bypass Executed",
+                                            Content = feature.label .. " has been activated (forced).",
+                                            Duration = 5
+                                        })
+                                    end)
+                                    if Debug.Success then
+                                        Debug:Success("Bypass force-activated: " .. feature.label)
+                                    end
+                                else
+                                    pcall(function()
+                                        FluentLib:Notify({
+                                            Title = "Bypass Failed",
+                                            Content = feature.label .. " could not be activated.",
+                                            Duration = 5
+                                        })
+                                    end)
+                                    if Debug.Warning then
+                                        Debug:Warning("Bypass failed: " .. feature.label)
+                                    end
+                                end
+                            end
+                        },
+                        {
+                            Title = "Cancel",
+                            Callback = function()
+                                pcall(function()
+                                    FluentLib:Notify({
+                                        Title = "Cancelled",
+                                        Content = feature.label .. " was not activated.",
+                                        Duration = 3
+                                    })
+                                end)
+                                if Debug.Info then
+                                    Debug:Info("User cancelled bypass: " .. feature.label)
+                                end
+                            end
+                        }
+                    }
+                })
+            end)
+        end
+
+        -- Group features by category and create buttons
+        local categories = {
+            { key = "standard",   title = "🔧 Standard Bypasses",     desc = "Low-risk bypass features. Auto-applied on load but can be re-run manually." },
+            { key = "advanced",   title = "⚡ Advanced Bypasses",      desc = "Core script elevation & metamethod hooks. Requires manual activation." },
+            { key = "permissions", title = "🔑 RobloxScript Permissions", desc = "⚠️ HIGH RISK — These can leak session cookies or make real transactions. Use with extreme caution." },
+        }
+
+        for _, cat in ipairs(categories) do
+            -- Add a section header for each category
+            Tabs.Bypass:AddParagraph({
+                Title = cat.title,
+                Content = cat.desc
+            })
+
+            -- Add a button for each feature in this category
+            for _, feat in ipairs(Bypass.BypassFeatures) do
+                if feat.category == cat.key then
+                    Tabs.Bypass:AddButton({
+                        Title = feat.label,
+                        Callback = function()
+                            activateBypassFeature(feat)
+                        end
+                    })
+                end
+            end
+        end
+
+        -- Add a "Run All Safe Bypasses" button at the bottom
+        Tabs.Bypass:AddParagraph({
+            Title = "🔄 Quick Actions",
+            Content = "Re-run all safe (green) bypass features at once."
+        })
+
+        Tabs.Bypass:AddButton({
+            Title = "Run All Safe Bypasses",
+            Callback = function()
+                if Debug.Info then Debug:Info("Manual: running all safe bypasses") end
+                pcall(function()
+                    FluentLib:Notify({
+                        Title = "Running Safe Bypasses",
+                        Content = "Re-applying all low-risk bypass features...",
+                        Duration = 3
+                    })
+                end)
+                -- Run auto-bypass sequence again (safe features only)
+                if Bypass.RunAutoBypass then
+                    task.spawn(function()
+                        Bypass.RunAutoBypass()
+                    end)
+                end
+            end
+        })
+
+        -- Add a "Check All Safety" button that reports the status of every feature
+        Tabs.Bypass:AddButton({
+            Title = "Check All Safety Levels",
+            Callback = function()
+                local counts = { SAFE = 0, CAUTION = 0, DANGEROUS = 0, UNKNOWN = 0 }
+                for _, feat in ipairs(Bypass.BypassFeatures) do
+                    local a = Bypass.CheckSafety(feat.name)
+                    if counts[a.level] then
+                        counts[a.level] = counts[a.level] + 1
+                    else
+                        counts.UNKNOWN = counts.UNKNOWN + 1
+                    end
+                end
+                local summary = string.format(
+                    "🟢 SAFE: %d  |  🟡 CAUTION: %d  |  🔴 DANGEROUS: %d",
+                    counts.SAFE, counts.CAUTION, counts.DANGEROUS
+                )
+                pcall(function()
+                    FluentLib:Notify({
+                        Title = "Safety Report",
+                        Content = summary,
+                        Duration = 8
+                    })
+                end)
+                if Debug.Info then Debug:Info("Safety report: " .. summary) end
+            end
+        })
+
+        if Debug.Success then Debug:Success("Bypass tab built with " .. #Bypass.BypassFeatures .. " features") end
+    else
+        -- Premium bypass not available — show a locked message
+        Tabs.Bypass:AddParagraph({
+            Title = "🔒 Bypass Suite Locked",
+            Content = "The bypass suite is a premium feature.\nUpgrade your key to access anti-cheat bypass capabilities."
+        })
+
+        Tabs.Bypass:AddButton({
+            Title = "Check Premium Status",
+            Callback = function()
+                local isPrem = Premium and Premium.isPremium or false
+                local hasBypass = false
+                if Premium and Premium.HasFeature then
+                    hasBypass = Premium:HasFeature("bypass")
+                end
+                pcall(function()
+                    FluentLib:Notify({
+                        Title = "Premium Status",
+                        Content = "Premium: " .. tostring(isPrem) .. "\nBypass access: " .. tostring(hasBypass),
+                        Duration = 6
+                    })
+                end)
+            end
+        })
+    end
 end)
 
 if Debug.Success then Debug:Success("UI module initialization complete") end
