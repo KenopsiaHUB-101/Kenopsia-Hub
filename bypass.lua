@@ -53,15 +53,7 @@ local function bypassMetaMethods()
         end
     end
     
-    if hookfunction then
-        local originalHook = hookfunction
-        hookfunction = function(func, replacement)
-            return originalHook(func, function(...)
-                return replacement(...)
-            end)
-        end
-    end
-    
+    -- Safely attempt to make the registry writable (wrapped in pcall)
     if setreadonly then
         pcall(function() setreadonly(getrenv(), false) end)
     end
@@ -85,28 +77,60 @@ local function bypassHandshakes()
     if not Debug then return end
     Debug:Debug("Attempting handshake bypass...")
     
-    local remotes = game:GetService("ReplicatedStorage"):GetDescendants()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local handshakeRemotes = {}
     
-    for _, remote in ipairs(remotes) do
+    -- Collect all handshake/validate/verify remotes (read-only, no method assignment)
+    for _, remote in ipairs(ReplicatedStorage:GetDescendants()) do
         if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-            if remote.Name:lower():find("handshake") or 
-               remote.Name:lower():find("validate") or 
-               remote.Name:lower():find("verify") then
-                table.insert(handshakeRemotes, remote.Name)
-                
-                if remote:IsA("RemoteEvent") then
-                    local originalFire = remote.FireServer
-                    remote.FireServer = function(self, ...)
-                        return true
-                    end
-                elseif remote:IsA("RemoteFunction") then
-                    local originalInvoke = remote.InvokeServer
-                    remote.InvokeServer = function(self, ...)
-                        return true
+            local lname = remote.Name:lower()
+            if lname:find("handshake") or lname:find("validate") or lname:find("verify") then
+                table.insert(handshakeRemotes, remote)
+            end
+        end
+    end
+    
+    -- Build a lookup set of the remotes we want to neutralize
+    local neutralizedSet = {}
+    for _, r in ipairs(handshakeRemotes) do
+        neutralizedSet[r] = true
+    end
+    
+    -- Use hookmetamethod on __namecall to intercept :FireServer / :InvokeServer
+    -- calls targeting our handshake remotes. This is the correct way to hook
+    -- Roblox instance method calls (direct assignment of FireServer fails
+    -- because it is a locked C member).
+    if hookmetamethod then
+        pcall(function()
+            local originalNamecall
+            originalNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod and getnamecallmethod() or ""
+                if neutralizedSet[self] then
+                    if method == "FireServer" then
+                        return -- silently swallow the handshake fire
+                    elseif method == "InvokeServer" then
+                        return true -- pretend the server validated us
                     end
                 end
-            end
+                return originalNamecall(self, ...)
+            end)
+        end)
+        if Debug.Debug then Debug:Debug("hookmetamethod __namecall installed for handshake remotes") end
+    else
+        -- Fallback: hookfunction on the FireServer/InvokeServer C functions if available
+        local mt = getrawmetatable and getrawmetatable(game)
+        if mt and mt.__namecall and hookfunction then
+            pcall(function()
+                local oldNamecall = mt.__namecall
+                hookfunction(oldNamecall, function(self, ...)
+                    local method = getnamecallmethod and getnamecallmethod() or ""
+                    if neutralizedSet[self] then
+                        if method == "FireServer" then return end
+                        if method == "InvokeServer" then return true end
+                    end
+                    return oldNamecall(self, ...)
+                end)
+            end)
         end
     end
     
@@ -127,32 +151,23 @@ local function bypassHookChecks()
     
     local hooksBypassed = 0
     
+    -- If detour_function exists, wrap it so it no-ops (safely)
     if detour_function then
-        local originalDetour = detour_function
-        detour_function = function(...)
-            return true
-        end
-        hooksBypassed = hooksBypassed + 1
-    end
-    
-    if hookfunction then
-        local gcResult = pcall(function() return getreg() end)
-        if gcResult then
-            for _, func in pairs(getreg() or {}) do
-                if type(func) == "function" then
-                    pcall(function()
-                        hookfunction(func, func)
-                        hooksBypassed = hooksBypassed + 1
-                    end)
-                end
+        pcall(function()
+            local originalDetour = detour_function
+            getgenv().detour_function = function(...)
+                return true
             end
-        end
+            hooksBypassed = hooksBypassed + 1
+        end)
     end
     
+    -- Disable error-reporting connections so anti-cheat can't phone home
     if getconnections then
         pcall(function()
-            for _, connection in ipairs(getconnections(game:GetService("ScriptContext").Error) or {}) do
-                connection:Disable()
+            local conns = getconnections(game:GetService("ScriptContext").Error) or {}
+            for _, connection in ipairs(conns) do
+                pcall(function() connection:Disable() end)
                 hooksBypassed = hooksBypassed + 1
             end
         end)
@@ -270,32 +285,42 @@ local function bypassVMChecks()
     
     local vmBypasses = 0
     
-    if debug then
-        pcall(function()
-            debug.info = function() return "C" end
-            debug.traceback = function() return "" end
+    -- Override debug.info / debug.traceback via getgenv() so we don't touch
+    -- the read-only `debug` library directly.
+    pcall(function()
+        if debug then
+            local dbg = getgenv().debug or {}
+            dbg.info = function() return "C" end
+            dbg.traceback = function() return "" end
+            getgenv().debug = dbg
             vmBypasses = vmBypasses + 2
-        end)
-    end
+        end
+    end)
     
+    -- Override getcallingscript so anti-cheat thinks we're a real game script
     if getcallingscript then
         pcall(function()
-            local original = getcallingscript
-            getcallingscript = function() return nil end
+            getgenv().getcallingscript = function()
+                local ok, result = pcall(function()
+                    return game:GetService("Players").LocalPlayer.Character
+                end)
+                return nil
+            end
             vmBypasses = vmBypasses + 1
         end)
     end
     
+    -- Scrub the `script` reference from our call environments
     if getfenv then
-        for i = 1, 10 do
-            pcall(function()
-                local env = getfenv(i)
-                if env and env.script then
+        pcall(function()
+            for i = 1, 10 do
+                local ok, env = pcall(getfenv, i)
+                if ok and env and type(env) == "table" and env.script then
                     env.script = nil
                     vmBypasses = vmBypasses + 1
                 end
-            end)
-        end
+            end
+        end)
     end
     
     pcall(function()
