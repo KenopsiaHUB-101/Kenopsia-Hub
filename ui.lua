@@ -160,19 +160,28 @@ local floatingSuccess = pcall(function()
         end
     end)
 
-    -- Virtual input manager for stable mobile toggle
-    local VirtualInputManager = game:GetService("VirtualInputManager")
-
+    -- Direct toggle: call Fluent's built-in Minimize() which flips
+    -- Window.Minimized and Window.Root.Visible. This is far more reliable
+    -- than simulating keypresses (VirtualInputManager:SendKeyEvent) which
+    -- can double-toggle on mobile and interfere with the analog joystick /
+    -- jump buttons.
+    local isToggling = false
     local function safeToggleUI()
+        if isToggling then return end
+        isToggling = true
         pcall(function()
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-            task.wait(0.05)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+            if Window and Window.Minimize then
+                Window:Minimize()
+            end
         end)
+        task.wait(0.25)
+        isToggling = false
     end
 
-    -- Handle button input - use InputBegan/InputEnded for maximum compatibility
-    -- (TouchEnded is not available on all executors and causes crashes)
+    -- Handle button input - use MouseButton1Click + Activated for maximum
+    -- compatibility across PC and mobile executors.
+    -- (TouchEnded is not available on all executors and causes crashes.)
+    -- The isToggling debounce above prevents double-toggle when both events fire.
     pcall(function()
         toggleBtn.MouseButton1Click:Connect(function()
             safeToggleUI()
@@ -180,11 +189,8 @@ local floatingSuccess = pcall(function()
     end)
     
     pcall(function()
-        toggleBtn.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch 
-            or input.UserInputType == Enum.UserInputType.MouseButton1 then
-                safeToggleUI()
-            end
+        toggleBtn.Activated:Connect(function()
+            safeToggleUI()
         end)
     end)
 
