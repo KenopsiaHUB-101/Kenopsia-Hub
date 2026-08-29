@@ -51,13 +51,13 @@ return function(HUB)
     -- Setup buffer cache
     for _, itemName in ipairs(partItemList) do
         pcall(function()
-            State.bufferCache[itemName] = buffer.fromstring(string.format("\\0\\6\\0blocks%s\\0%s", string.char(#itemName), itemName))
+            State.bufferCache[itemName] = buffer.fromstring(string.format("\0\6\0blocks%s\0%s", string.char(#itemName), itemName))
         end)
     end
     
     for _, itemName in ipairs(gardenItemList) do
         pcall(function()
-            State.bufferCache[itemName] = buffer.fromstring(string.format("\\0\\6\\0garden%s\\0%s", string.char(#itemName), itemName))
+            State.bufferCache[itemName] = buffer.fromstring(string.format("\0\6\0garden%s\0%s", string.char(#itemName), itemName))
         end)
     end
 
