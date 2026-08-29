@@ -3,11 +3,18 @@
 -- ⚠️ PREMIUM FEATURE - REQUIRES VALID KEY
 -- ==========================================
 
-local Debug = require(game:GetService("ReplicatedStorage"):WaitForChild("KenopsiaDebug", 5))
-local Premium = require(game:GetService("ReplicatedStorage"):WaitForChild("KenopsiaPremium", 5))
+local Debug = _G.KenopsiaDebug or {
+    Info = function() end,
+    Success = function() end,
+    Error = function() end,
+    Warning = function() end,
+    Debug = function() end
+}
 
-if not Debug then Debug = _G.KenopsiaDebug or {} end
-if not Premium then Premium = _G.KenopsiaPremium or {} end
+local Premium = _G.KenopsiaPremium or {
+    isPremium = false,
+    HasFeature = function() return false end
+}
 
 -- PREMIUM CHECK
 if not Premium.isPremium then
