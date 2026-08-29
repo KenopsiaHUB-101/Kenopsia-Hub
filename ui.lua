@@ -2,7 +2,8 @@
 -- KENOPSIA HUB - UI MODULE
 -- ==========================================
 
-local Debug = require(game:GetService("ReplicatedStorage"):WaitForChild("KenopsiaDebug", 5)) or _G.KenopsiaDebug
+-- Use the debug module from global (set by BuildAndCrush.lua loader)
+local Debug = _G.KenopsiaDebug
 if not Debug then
     Debug = {
         Info = function() end,
@@ -15,18 +16,49 @@ end
 
 if Debug.Info then Debug:Info("Loading UI module...") end
 
-local Fluent, err1 = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+-- Load Fluent UI library with proper error handling
+local Fluent = nil
+local fluentLoaded, fluentErr = pcall(function()
+    local content = game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua")
+    if not content or content == "" then
+        return nil
+    end
+    local fn = loadstring(content)
+    if not fn then
+        return nil
+    end
+    Fluent = fn()
+end)
+
 if not Fluent then
-    if Debug.Error then Debug:Error("Failed to load Fluent library: " .. tostring(err1)) end
+    if Debug.Error then Debug:Error("Failed to load Fluent library: " .. tostring(fluentErr)) end
     return nil
 end
 
-local SaveManager, err2 = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+-- Load SaveManager addon
+local SaveManager = nil
+pcall(function()
+    local content = game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua")
+    if content and content ~= "" then
+        local fn = loadstring(content)
+        if fn then SaveManager = fn() end
+    end
+end)
+
 if not SaveManager then
     if Debug.Warning then Debug:Warning("Failed to load SaveManager addon") end
 end
 
-local InterfaceManager, err3 = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+-- Load InterfaceManager addon
+local InterfaceManager = nil
+pcall(function()
+    local content = game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua")
+    if content and content ~= "" then
+        local fn = loadstring(content)
+        if fn then InterfaceManager = fn() end
+    end
+end)
+
 if not InterfaceManager then
     if Debug.Warning then Debug:Warning("Failed to load InterfaceManager addon") end
 end
