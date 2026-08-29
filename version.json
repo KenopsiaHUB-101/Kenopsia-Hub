@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "releaseDate": "2024-01-20",
+  "changelog": {
+    "1.0.0": {
+      "title": "Initial Release",
+      "features": [
+        "Premium key system with bypass access control",
+        "Comprehensive debug logging system",
+        "Auto-buy shop functionality",
+        "Player movement utilities (fly, noclip, ESP)",
+        "Server monitoring and statistics",
+        "Advanced settings and configuration",
+        "Discord webhook integration"
+      ],
+      "fixes": [
+        "Fixed all module loading errors",
+        "Improved error handling throughout",
+        "Added nil checks for character elements",
+        "Enhanced memory management",
+        "Streamlined UI initialization"
+      ]
+    }
+  },
+  "author": "Kenopsia HUB Team",
+  "supportUrl": "https://discord.gg/kenopsia",
+  "updateUrl": "https://raw.githubusercontent.com/KenopsiaHUB-101/Kenopsia-Hub/main/version.json"
+}
