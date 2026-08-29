@@ -14,7 +14,17 @@ local currentVersion = "1.0.0"
 -- ==================== DEBUG INITIALIZATION ====================
 print("[KENOPSIA] Initializing debug system...")
 
-local Debug = loadstring(game:HttpGet(baseUrl .. "debug.lua"))()
+local Debug = nil
+pcall(function()
+    local content = game:HttpGet(baseUrl .. "debug.lua")
+    if content and content ~= "" then
+        local fn = loadstring(content)
+        if fn then
+            Debug = fn()
+        end
+    end
+end)
+
 if not Debug then
     warn("[KENOPSIA] Failed to load debug module")
     Debug = {
@@ -33,10 +43,24 @@ if Debug.Info then Debug:Info("Kenopsia HUB v" .. currentVersion .. " starting..
 -- ==================== PREMIUM SYSTEM INITIALIZATION ====================
 if Debug.Debug then Debug:Debug("Loading premium system...") end
 
-local Premium = loadstring(game:HttpGet(baseUrl .. "premium.lua"))()
+local Premium = nil
+pcall(function()
+    local content = game:HttpGet(baseUrl .. "premium.lua")
+    if content and content ~= "" then
+        local fn = loadstring(content)
+        if fn then
+            Premium = fn()
+        end
+    end
+end)
+
 if not Premium then
     if Debug.Error then Debug:Error("Failed to load premium system") end
-    return
+    Premium = {
+        isPremium = false,
+        HasFeature = function() return false end,
+        ValidateKey = function() return false end
+    }
 end
 
 -- Set initial premium key (can be validated by Panda Auth)
